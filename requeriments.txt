@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+torch
+transformers
+accelerate
+safetensors
+sentencepiece
+pillow

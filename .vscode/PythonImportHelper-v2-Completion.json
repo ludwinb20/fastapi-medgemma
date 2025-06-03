@@ -1,0 +1,104 @@
+[
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "UploadFile",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "File",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "AutoProcessor",
+        "importPath": "transformers",
+        "description": "transformers",
+        "isExtraImport": true,
+        "detail": "transformers",
+        "documentation": {}
+    },
+    {
+        "label": "AutoModelForCausalLM",
+        "importPath": "transformers",
+        "description": "transformers",
+        "isExtraImport": true,
+        "detail": "transformers",
+        "documentation": {}
+    },
+    {
+        "label": "Image",
+        "importPath": "PIL",
+        "description": "PIL",
+        "isExtraImport": true,
+        "detail": "PIL",
+        "documentation": {}
+    },
+    {
+        "label": "torch",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "torch",
+        "description": "torch",
+        "detail": "torch",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "app = FastAPI()\n# Cargar el modelo\ntoken = os.environ[\"HF_TOKEN\"]\nprocessor = AutoProcessor.from_pretrained(\"google/medgemma-4b-it\", token=token)\nmodel = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)",
+        "detail": "main",
+        "documentation": {}
+    },
+    {
+        "label": "token",
+        "kind": 5,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "token = os.environ[\"HF_TOKEN\"]\nprocessor = AutoProcessor.from_pretrained(\"google/medgemma-4b-it\", token=token)\nmodel = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)\n    inputs = processor(images=image, text=\"Describe los hallazgos médicos\", return_tensors=\"pt\").to(\"cuda\")\n    outputs = model.generate(**inputs, max_new_tokens=200)",
+        "detail": "main",
+        "documentation": {}
+    },
+    {
+        "label": "processor",
+        "kind": 5,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "processor = AutoProcessor.from_pretrained(\"google/medgemma-4b-it\", token=token)\nmodel = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)\n    inputs = processor(images=image, text=\"Describe los hallazgos médicos\", return_tensors=\"pt\").to(\"cuda\")\n    outputs = model.generate(**inputs, max_new_tokens=200)\n    result = processor.decode(outputs[0], skip_special_tokens=True)",
+        "detail": "main",
+        "documentation": {}
+    },
+    {
+        "label": "model",
+        "kind": 5,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "model = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)\n    inputs = processor(images=image, text=\"Describe los hallazgos médicos\", return_tensors=\"pt\").to(\"cuda\")\n    outputs = model.generate(**inputs, max_new_tokens=200)\n    result = processor.decode(outputs[0], skip_special_tokens=True)\n    return {\"result\": result}",
+        "detail": "main",
+        "documentation": {}
+    }
+]
