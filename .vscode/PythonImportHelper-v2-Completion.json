@@ -24,6 +24,62 @@
         "documentation": {}
     },
     {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "UploadFile",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "File",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "AutoProcessor",
+        "importPath": "transformers",
+        "description": "transformers",
+        "isExtraImport": true,
+        "detail": "transformers",
+        "documentation": {}
+    },
+    {
+        "label": "AutoModelForCausalLM",
+        "importPath": "transformers",
+        "description": "transformers",
+        "isExtraImport": true,
+        "detail": "transformers",
+        "documentation": {}
+    },
+    {
         "label": "AutoProcessor",
         "importPath": "transformers",
         "description": "transformers",
@@ -41,6 +97,30 @@
     },
     {
         "label": "Image",
+        "importPath": "PIL",
+        "description": "PIL",
+        "isExtraImport": true,
+        "detail": "PIL",
+        "documentation": {}
+    },
+    {
+        "label": "UnidentifiedImageError",
+        "importPath": "PIL",
+        "description": "PIL",
+        "isExtraImport": true,
+        "detail": "PIL",
+        "documentation": {}
+    },
+    {
+        "label": "Image",
+        "importPath": "PIL",
+        "description": "PIL",
+        "isExtraImport": true,
+        "detail": "PIL",
+        "documentation": {}
+    },
+    {
+        "label": "UnidentifiedImageError",
         "importPath": "PIL",
         "description": "PIL",
         "isExtraImport": true,
@@ -66,39 +146,149 @@
         "documentation": {}
     },
     {
+        "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "BytesIO",
+        "importPath": "io",
+        "description": "io",
+        "isExtraImport": true,
+        "detail": "io",
+        "documentation": {}
+    },
+    {
+        "label": "BytesIO",
+        "importPath": "io",
+        "description": "io",
+        "isExtraImport": true,
+        "detail": "io",
+        "documentation": {}
+    },
+    {
+        "label": "logging",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "logging",
+        "description": "logging",
+        "detail": "logging",
+        "documentation": {}
+    },
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "MedicalExamType",
+        "kind": 6,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "class MedicalExamType(str, Enum):\n    CHEST_XRAY = \"radiografía de tórax\"\n    BRAIN_MRI = \"resonancia magnética cerebral\"\n    ABDOMINAL_CT = \"tomografía abdominal\"\n# Modelo de respuesta\nclass AnalysisResult(BaseModel):\n    result: str\n    model: str = \"medgemma-4b-it\"\n    processing_time: Optional[float] = None\n# Cargar modelo y processor",
+        "detail": "main",
+        "documentation": {}
+    },
+    {
+        "label": "AnalysisResult",
+        "kind": 6,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "class AnalysisResult(BaseModel):\n    result: str\n    model: str = \"medgemma-4b-it\"\n    processing_time: Optional[float] = None\n# Cargar modelo y processor\ntry:\n    HF_TOKEN = os.getenv(\"HF_TOKEN\")\n    if not HF_TOKEN:\n        raise ValueError(\"HF_TOKEN no está configurado\")\n    logger.info(\"Cargando modelo MedGemma...\")",
+        "detail": "main",
+        "documentation": {}
+    },
+    {
+        "label": "run_analysis",
+        "kind": 2,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "def run_analysis(image: Image.Image, prompt: str) -> AnalysisResult:\n    # Asegurarse de que la imagen sea RGB\n    if image.mode != 'RGB':\n        image = image.convert('RGB')\n    # Iniciar temporizador\n    start_time = torch.cuda.Event(enable_timing=True)\n    end_time = torch.cuda.Event(enable_timing=True)\n    start_time.record()\n    # Mensajes estructurados\n    messages = [",
+        "detail": "main",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "kind": 5,
+        "importPath": "main",
+        "description": "main",
+        "peekOfCode": "logger = logging.getLogger(__name__)\napp = FastAPI(title=\"MedGemma API\", version=\"1.0\")\n# Enum para tipos de estudio médico\nclass MedicalExamType(str, Enum):\n    CHEST_XRAY = \"radiografía de tórax\"\n    BRAIN_MRI = \"resonancia magnética cerebral\"\n    ABDOMINAL_CT = \"tomografía abdominal\"\n# Modelo de respuesta\nclass AnalysisResult(BaseModel):\n    result: str",
+        "detail": "main",
+        "documentation": {}
+    },
+    {
         "label": "app",
         "kind": 5,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "app = FastAPI()\n# Cargar el modelo\ntoken = os.environ[\"HF_TOKEN\"]\nprocessor = AutoProcessor.from_pretrained(\"google/medgemma-4b-it\", token=token)\nmodel = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)",
+        "peekOfCode": "app = FastAPI(title=\"MedGemma API\", version=\"1.0\")\n# Enum para tipos de estudio médico\nclass MedicalExamType(str, Enum):\n    CHEST_XRAY = \"radiografía de tórax\"\n    BRAIN_MRI = \"resonancia magnética cerebral\"\n    ABDOMINAL_CT = \"tomografía abdominal\"\n# Modelo de respuesta\nclass AnalysisResult(BaseModel):\n    result: str\n    model: str = \"medgemma-4b-it\"",
         "detail": "main",
         "documentation": {}
     },
     {
-        "label": "token",
-        "kind": 5,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "token = os.environ[\"HF_TOKEN\"]\nprocessor = AutoProcessor.from_pretrained(\"google/medgemma-4b-it\", token=token)\nmodel = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)\n    inputs = processor(images=image, text=\"Describe los hallazgos médicos\", return_tensors=\"pt\").to(\"cuda\")\n    outputs = model.generate(**inputs, max_new_tokens=200)",
-        "detail": "main",
+        "label": "AnalysisResult",
+        "kind": 6,
+        "importPath": "no-main",
+        "description": "no-main",
+        "peekOfCode": "class AnalysisResult(BaseModel):\n    result: str\n    model: str = \"medgemma-4b-it\"\n    processing_time: Optional[float] = None\n# Cargar el modelo (con manejo de errores)\ntry:\n    HF_TOKEN = os.getenv(\"HF_TOKEN\")\n    if not HF_TOKEN:\n        raise ValueError(\"HF_TOKEN no está configurado\")\n    logger.info(\"Cargando modelo MedGemma...\")",
+        "detail": "no-main",
         "documentation": {}
     },
     {
-        "label": "processor",
+        "label": "logger",
         "kind": 5,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "processor = AutoProcessor.from_pretrained(\"google/medgemma-4b-it\", token=token)\nmodel = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)\n    inputs = processor(images=image, text=\"Describe los hallazgos médicos\", return_tensors=\"pt\").to(\"cuda\")\n    outputs = model.generate(**inputs, max_new_tokens=200)\n    result = processor.decode(outputs[0], skip_special_tokens=True)",
-        "detail": "main",
+        "importPath": "no-main",
+        "description": "no-main",
+        "peekOfCode": "logger = logging.getLogger(__name__)\napp = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\n# Modelo de respuesta\nclass AnalysisResult(BaseModel):\n    result: str\n    model: str = \"medgemma-4b-it\"\n    processing_time: Optional[float] = None\n# Cargar el modelo (con manejo de errores)\ntry:\n    HF_TOKEN = os.getenv(\"HF_TOKEN\")",
+        "detail": "no-main",
         "documentation": {}
     },
     {
-        "label": "model",
+        "label": "app",
         "kind": 5,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "model = AutoModelForCausalLM.from_pretrained(\n    \"google/medgemma-4b-it\", device_map=\"auto\", torch_dtype=torch.float16\n)\n@app.post(\"/analyze\")\nasync def analyze(file: UploadFile = File(...)):\n    image = Image.open(file.file)\n    inputs = processor(images=image, text=\"Describe los hallazgos médicos\", return_tensors=\"pt\").to(\"cuda\")\n    outputs = model.generate(**inputs, max_new_tokens=200)\n    result = processor.decode(outputs[0], skip_special_tokens=True)\n    return {\"result\": result}",
-        "detail": "main",
+        "importPath": "no-main",
+        "description": "no-main",
+        "peekOfCode": "app = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\n# Modelo de respuesta\nclass AnalysisResult(BaseModel):\n    result: str\n    model: str = \"medgemma-4b-it\"\n    processing_time: Optional[float] = None\n# Cargar el modelo (con manejo de errores)\ntry:\n    HF_TOKEN = os.getenv(\"HF_TOKEN\")\n    if not HF_TOKEN:",
+        "detail": "no-main",
         "documentation": {}
     }
 ]

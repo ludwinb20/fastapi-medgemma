@@ -4,7 +4,12 @@ RUN apt update && apt install -y git && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip
 
 RUN pip install fastapi uvicorn transformers accelerate \
-    safetensors sentencepiece Pillow
+    safetensors sentencepiece Pillow python-multipart
+
+VOLUME /model_cache
+
+ENV TRANSFORMERS_CACHE=/model_cache \
+    HF_HOME=/model_cache
 
 WORKDIR /app
 COPY . /app
