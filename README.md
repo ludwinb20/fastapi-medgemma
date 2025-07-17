@@ -15,18 +15,6 @@ This is a demo API built using **FastAPI** and **Docker** to interface with the 
 
 ---
 
-## 📁 Project Structure
-
-```
-├── app/
-│   ├── main.py         # FastAPI entry point
-│   └── requirements.txt
-├── Dockerfile
-└── README.md
-```
-
----
-
 ## 🐋 Run with Docker
 
 ### 1. Set up Hugging Face Token
