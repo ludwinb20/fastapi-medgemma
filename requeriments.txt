@@ -6,3 +6,4 @@ accelerate
 safetensors
 sentencepiece
 pillow
+firebase-admin
