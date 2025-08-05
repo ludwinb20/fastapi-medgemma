@@ -2,3 +2,4 @@
 .env
 serviceAccountKey.json
 *.json
+/model_cache

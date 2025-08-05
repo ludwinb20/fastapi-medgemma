@@ -29,15 +29,45 @@ except Exception as e:
     # Continuar sin Firebase si no está configurado
     pass
 
+async def verify_api_key(request: Request):
+    """
+    Middleware para verificar API Key en lugar de session cookies.
+    """
+    api_key = request.headers.get("X-API-Key")
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="No API key provided")
+    
+    # Obtener la API key desde variables de entorno
+    expected_api_key = os.getenv("MEDGEMMA_API_KEY")
+    
+    if not expected_api_key:
+        raise HTTPException(status_code=500, detail="API key not configured on server")
+    
+    if api_key != expected_api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    # Si la API key es válida, retornar información básica
+    return {
+        "authenticated": True,
+        "auth_method": "api_key",
+        "timestamp": "2024-01-01T00:00:00Z"  # Puedes agregar timestamp real si quieres
+   }
+
+
 async def verify_session_cookie(request: Request):
     session_cookie = request.cookies.get("__session")
-    
+    print(1)
+    print(request.cookies)
+
     if not session_cookie:
         raise HTTPException(status_code=401, detail="No session cookie")
     
     try:
         # Verificar la session cookie
+        print(2)
         decoded_claims = auth.verify_session_cookie(session_cookie, check_revoked=True)
+        print(decoded_claims)
         return decoded_claims  # Contiene uid, email, etc.
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid session")
@@ -86,7 +116,7 @@ except Exception as e:
 async def analyze_medical_image(
     file: UploadFile = File(..., description="Imagen médica para análisis"),
     prompt: str = "Describe los hallazgos médicos relevantes en español",
-    user_claims: dict = Depends(verify_session_cookie)
+    user_claims: dict = Depends(verify_api_key)
 ):
     """Analiza imágenes médicas usando MedGemma-4b-it con formato estructurado"""
     try:
@@ -173,7 +203,7 @@ async def analyze_medical_image(
 @app.post("/api/process-text", response_model=ProcessResponse)
 async def process_text(
     request: TextProcessRequest,
-    user_claims: dict = Depends(verify_session_cookie)
+    user_claims: dict = Depends(verify_api_key)
 ):
     """Procesa texto usando MedGemma-4b-it"""
     try:
@@ -240,7 +270,7 @@ async def process_text(
 @app.post("/api/process-image", response_model=ProcessResponse)
 async def process_image(
     request: ImageProcessRequest,
-    user_claims: dict = Depends(verify_session_cookie)
+    user_claims: dict = Depends(verify_api_key)
 ):
     """Procesa imagen usando MedGemma-4b-it"""
     try:

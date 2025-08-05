@@ -4,7 +4,7 @@ RUN apt update && apt install -y git && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip
 
 RUN pip install fastapi uvicorn transformers accelerate \
-    safetensors sentencepiece Pillow python-multipart
+    safetensors sentencepiece Pillow python-multipart firebase-admin
 
 VOLUME /model_cache
 
