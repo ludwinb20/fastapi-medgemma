@@ -69,6 +69,10 @@ def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=
     generated_tokens = []
     assistant_markers = ["<|im_start|>assistant", "<|im_end|>", "<|im_start|>user", "<|im_end|>"]
     
+    # Variables para controlar el inicio de la respuesta
+    response_started = False
+    accumulated_text = ""
+    
     for outputs in model.generate(
         **inputs,
         max_new_tokens=max_new_tokens,
@@ -78,7 +82,6 @@ def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=
         pad_token_id=processor.tokenizer.eos_token_id,
         eos_token_id=processor.tokenizer.eos_token_id,
         use_cache=True,
-        streamer=None,  # No usar streamer de transformers
         return_dict_in_generate=True,
         output_scores=False
     ):
@@ -89,12 +92,37 @@ def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=
         # Decodificar solo los nuevos tokens
         new_text = processor.tokenizer.decode(new_tokens, skip_special_tokens=True)
         
-        # Limpiar marcadores de chat
-        for marker in assistant_markers:
-            new_text = new_text.replace(marker, "")
+        # Acumular texto para detectar el inicio de la respuesta
+        accumulated_text += new_text
         
-        if new_text.strip():
-            yield f"data: {json.dumps({'token': new_text, 'finished': False})}\n\n"
+        # Detectar cuando comienza la respuesta real (después del prompt)
+        if not response_started:
+            # Buscar marcadores que indiquen el inicio de la respuesta
+            for marker in assistant_markers:
+                if marker in accumulated_text:
+                    # Extraer solo la parte después del marcador
+                    parts = accumulated_text.split(marker)
+                    if len(parts) > 1:
+                        accumulated_text = parts[-1]
+                        response_started = True
+                        break
+            
+            # Si no encontramos marcadores, buscar después de "assistant"
+            if not response_started and "assistant" in accumulated_text.lower():
+                assistant_index = accumulated_text.lower().find("assistant")
+                if assistant_index != -1:
+                    accumulated_text = accumulated_text[assistant_index + 9:]  # "assistant" tiene 9 caracteres
+                    response_started = True
+        
+        # Solo enviar texto si ya comenzó la respuesta
+        if response_started:
+            # Limpiar marcadores de chat
+            clean_text = new_text
+            for marker in assistant_markers:
+                clean_text = clean_text.replace(marker, "")
+            
+            if clean_text.strip():
+                yield f"data: {json.dumps({'token': clean_text, 'finished': False})}\n\n"
     
     # Señalizar fin
     yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
