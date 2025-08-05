@@ -167,13 +167,16 @@ async def analyze_medical_image(
             truncation=True
         ).to("cuda")
 
-        # Generar respuesta
+        # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
             max_new_tokens=500,
             do_sample=True,
             temperature=0.7,
-            top_p=0.9
+            top_p=0.9,
+            pad_token_id=processor.tokenizer.eos_token_id,
+            eos_token_id=processor.tokenizer.eos_token_id,
+            use_cache=True
         )
 
         # Decodificar y limpiar respuesta
@@ -239,13 +242,16 @@ async def process_text(
             truncation=True
         ).to("cuda")
 
-        # Generar respuesta
+        # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
             max_new_tokens=500,
             do_sample=True,
             temperature=0.7,
-            top_p=0.9
+            top_p=0.9,
+            pad_token_id=processor.tokenizer.eos_token_id,
+            eos_token_id=processor.tokenizer.eos_token_id,
+            use_cache=True
         )
 
         # Decodificar y limpiar respuesta
@@ -323,13 +329,16 @@ async def process_image(
             truncation=True
         ).to("cuda")
 
-        # Generar respuesta
+        # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
             max_new_tokens=500,
             do_sample=True,
             temperature=0.7,
-            top_p=0.9
+            top_p=0.9,
+            pad_token_id=processor.tokenizer.eos_token_id,
+            eos_token_id=processor.tokenizer.eos_token_id,
+            use_cache=True
         )
 
         # Decodificar y limpiar respuesta

@@ -4,7 +4,8 @@ RUN apt update && apt install -y git && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip
 
 RUN pip install fastapi uvicorn transformers accelerate \
-    safetensors sentencepiece Pillow python-multipart firebase-admin
+    safetensors sentencepiece Pillow python-multipart firebase-admin && \
+    pip install --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 VOLUME /model_cache
 
