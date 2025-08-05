@@ -1,9 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
+from fastapi.responses import StreamingResponse
 from transformers import AutoProcessor, AutoModelForCausalLM
 from PIL import Image, UnidentifiedImageError
 import torch
 import os
-from typing import Optional
+from typing import Optional, Generator
 from pydantic import BaseModel
 import logging
 from io import BytesIO
@@ -16,6 +17,87 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Medical Image Analysis API", version="1.0")
+
+def clean_response(full_response, prompt):
+    """Limpia la respuesta removiendo el prompt original"""
+    # Buscar el último token de asistente en el prompt
+    assistant_markers = ["<|im_start|>assistant", "<|im_end|>", "<|im_start|>user", "<|im_end|>"]
+    
+    # Intentar diferentes estrategias de limpieza
+    cleaned = full_response
+    
+    # Estrategia 1: Buscar después del último marcador de asistente
+    for marker in assistant_markers:
+        if marker in prompt:
+            parts = prompt.split(marker)
+            if len(parts) > 1:
+                prompt_until_assistant = parts[0] + marker
+                if prompt_until_assistant in full_response:
+                    cleaned = full_response.split(prompt_until_assistant)[-1]
+                    break
+    
+    # Estrategia 2: Si no funciona, buscar después de "assistant"
+    if cleaned == full_response and "assistant" in prompt.lower():
+        assistant_index = prompt.lower().find("assistant")
+        if assistant_index != -1:
+            prompt_until_assistant = prompt[:assistant_index] + "assistant"
+            if prompt_until_assistant in full_response:
+                cleaned = full_response.split(prompt_until_assistant)[-1]
+    
+    # Estrategia 3: Remover el prompt completo si está al inicio
+    if cleaned == full_response and prompt in full_response:
+        cleaned = full_response.replace(prompt, "")
+    
+    # Limpiar marcadores de chat si quedan
+    for marker in assistant_markers:
+        cleaned = cleaned.replace(marker, "")
+    
+    return cleaned.strip()
+
+def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=500):
+    """Genera respuesta en streaming"""
+    # Procesar con el modelo
+    inputs = processor(
+        text=formatted_prompt,
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=2048
+    ).to("cuda")
+    
+    # Generar respuesta con streaming
+    generated_tokens = []
+    assistant_markers = ["<|im_start|>assistant", "<|im_end|>", "<|im_start|>user", "<|im_end|>"]
+    
+    for outputs in model.generate(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=0.7,
+        top_p=0.9,
+        pad_token_id=processor.tokenizer.eos_token_id,
+        eos_token_id=processor.tokenizer.eos_token_id,
+        use_cache=True,
+        streamer=None,  # No usar streamer de transformers
+        return_dict_in_generate=True,
+        output_scores=False
+    ):
+        # Decodificar tokens generados
+        new_tokens = outputs.sequences[0][inputs.input_ids.shape[1]:]
+        generated_tokens.extend(new_tokens.tolist())
+        
+        # Decodificar solo los nuevos tokens
+        new_text = processor.tokenizer.decode(new_tokens, skip_special_tokens=True)
+        
+        # Limpiar marcadores de chat
+        for marker in assistant_markers:
+            new_text = new_text.replace(marker, "")
+        
+        if new_text.strip():
+            yield f"data: {json.dumps({'token': new_text, 'finished': False})}\n\n"
+    
+    # Señalizar fin
+    yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
 
 # Inicializar Firebase Admin
 try:
@@ -164,7 +246,8 @@ async def analyze_medical_image(
             images=[image],
             return_tensors="pt",
             padding=True,
-            truncation=True
+            truncation=True,
+            max_length=2048
         ).to("cuda")
 
         # Generar respuesta con parámetros compatibles
@@ -181,7 +264,7 @@ async def analyze_medical_image(
 
         # Decodificar y limpiar respuesta
         result = processor.batch_decode(outputs, skip_special_tokens=True)[0]
-        result = result.replace(formatted_prompt, "").strip()
+        result = clean_response(result, formatted_prompt)
         
         end_time.record()
         torch.cuda.synchronize()
@@ -239,7 +322,8 @@ async def process_text(
             text=formatted_prompt,
             return_tensors="pt",
             padding=True,
-            truncation=True
+            truncation=True,
+            max_length=2048
         ).to("cuda")
 
         # Generar respuesta con parámetros compatibles
@@ -256,7 +340,7 @@ async def process_text(
 
         # Decodificar y limpiar respuesta
         result = processor.batch_decode(outputs, skip_special_tokens=True)[0]
-        result = result.replace(formatted_prompt, "").strip()
+        result = clean_response(result, formatted_prompt)
         
         # Contar tokens (aproximado)
         tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
@@ -271,6 +355,59 @@ async def process_text(
 
     except Exception as e:
         logger.error(f"Error procesando texto: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@app.post("/api/process-text-stream")
+async def process_text_stream(
+    request: TextProcessRequest,
+    user_claims: dict = Depends(verify_api_key)
+):
+    """Procesa texto usando MedGemma-4b-it con streaming"""
+    try:
+        logger.info(f"Procesando texto en streaming para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Construir prompt con contexto si está disponible
+        full_prompt = request.prompt
+        if request.context:
+            full_prompt = f"Contexto: {request.context}\n\nPregunta: {request.prompt}"
+        
+        # Estructura de mensajes para texto
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": full_prompt}
+                ]
+            }
+        ]
+
+        # Aplicar template de chat
+        formatted_prompt = processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+
+        def generate_stream():
+            try:
+                for chunk in generate_stream_response(model, processor, formatted_prompt):
+                    yield chunk
+            except Exception as e:
+                logger.error(f"Error en streaming: {str(e)}")
+                yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
+
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Content-Type": "text/event-stream"
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error procesando texto en streaming: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @app.post("/api/process-image", response_model=ProcessResponse)
@@ -326,7 +463,8 @@ async def process_image(
             images=[image],
             return_tensors="pt",
             padding=True,
-            truncation=True
+            truncation=True,
+            max_length=2048
         ).to("cuda")
 
         # Generar respuesta con parámetros compatibles
@@ -343,7 +481,7 @@ async def process_image(
 
         # Decodificar y limpiar respuesta
         result = processor.batch_decode(outputs, skip_special_tokens=True)[0]
-        result = result.replace(formatted_prompt, "").strip()
+        result = clean_response(result, formatted_prompt)
         
         # Contar tokens (aproximado)
         tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
@@ -360,4 +498,75 @@ async def process_image(
         raise
     except Exception as e:
         logger.error(f"Error procesando imagen: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@app.post("/api/process-image-stream")
+async def process_image_stream(
+    request: ImageProcessRequest,
+    user_claims: dict = Depends(verify_api_key)
+):
+    """Procesa imagen usando MedGemma-4b-it con streaming"""
+    try:
+        logger.info(f"Procesando imagen en streaming para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Validar y decodificar data URI
+        if not request.imageDataUri.startswith("data:image/"):
+            raise HTTPException(status_code=400, detail="Formato de imagen inválido")
+        
+        try:
+            # Extraer la parte base64
+            header, encoded = request.imageDataUri.split(",", 1)
+            image_data = BytesIO(encoded.encode('utf-8'))
+            
+            # Decodificar base64
+            import base64
+            image_bytes = base64.b64decode(encoded)
+            image = Image.open(BytesIO(image_bytes))
+            
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+                
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Error decodificando imagen")
+
+        # Estructura de mensajes para imagen
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": request.prompt},
+                    {"type": "image", "image": image}
+                ]
+            }
+        ]
+
+        # Aplicar template de chat
+        formatted_prompt = processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+
+        def generate_stream():
+            try:
+                for chunk in generate_stream_response(model, processor, formatted_prompt):
+                    yield chunk
+            except Exception as e:
+                logger.error(f"Error en streaming de imagen: {str(e)}")
+                yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
+
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Content-Type": "text/event-stream"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error procesando imagen en streaming: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
