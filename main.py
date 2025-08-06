@@ -44,13 +44,50 @@ def clean_response(full_response, prompt):
             if prompt_until_assistant in full_response:
                 cleaned = full_response.split(prompt_until_assistant)[-1]
     
-    # Estrategia 3: Remover el prompt completo si está al inicio
+    # Estrategia 3: Buscar después de "model" (común en algunos modelos)
+    if cleaned == full_response and "model" in full_response.lower():
+        model_index = full_response.lower().find("model")
+        if model_index != -1:
+            cleaned = full_response[model_index + 5:]  # "model" tiene 5 caracteres
+    
+    # Estrategia 4: Buscar después de "Responde al último mensaje"
+    if cleaned == full_response and "Responde al último mensaje" in prompt:
+        respond_index = full_response.find("Responde al último mensaje")
+        if respond_index != -1:
+            # Buscar después de esta frase en la respuesta
+            prompt_after_respond = prompt[respond_index:]
+            if prompt_after_respond in full_response:
+                cleaned = full_response.split(prompt_after_respond)[-1]
+    
+    # Estrategia 5: Remover el prompt completo si está al inicio
     if cleaned == full_response and prompt in full_response:
         cleaned = full_response.replace(prompt, "")
+    
+    # Estrategia 6: Buscar el inicio real de la respuesta (después del prompt)
+    if cleaned == full_response:
+        # Buscar patrones comunes que indican el inicio de la respuesta
+        response_patterns = [
+            "Hola, lamento escuchar",
+            "Entiendo que",
+            "Para ayudarte mejor",
+            "¿Podrías decirme",
+            "Te recomiendo",
+            "Mientras tanto"
+        ]
+        
+        for pattern in response_patterns:
+            if pattern in full_response:
+                pattern_index = full_response.find(pattern)
+                if pattern_index > len(prompt) * 0.8:  # Si está después del 80% del prompt
+                    cleaned = full_response[pattern_index:]
+                    break
     
     # Limpiar marcadores de chat si quedan
     for marker in assistant_markers:
         cleaned = cleaned.replace(marker, "")
+    
+    # Limpiar líneas vacías al inicio
+    cleaned = cleaned.lstrip()
     
     return cleaned.strip()
 

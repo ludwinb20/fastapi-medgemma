@@ -271,6 +271,24 @@
         "documentation": {}
     },
     {
+        "label": "test_prompt_cleaning",
+        "kind": 2,
+        "importPath": "test-prompt-cleaning",
+        "description": "test-prompt-cleaning",
+        "peekOfCode": "def test_prompt_cleaning():\n    \"\"\"Prueba la limpieza de prompts específicos\"\"\"\n    print(\"🧪 Probando limpieza de prompts...\")\n    url = \"http://localhost:8000/api/process-text\"\n    # Datos de prueba (el caso problemático)\n    data = {\n        \"prompt\": \"Eres LucasMed, un asistente médico de IA en un chat con un doctor. Usa el contexto de los últimos mensajes para dar una respuesta precisa y útil.\\n\\nHistorial de mensajes:\\nai: Lo siento, no pude procesar tu solicitud. Intenta nuevamente más tarde.\\nuser: hola\\nuser: me duele la cabeza\\n\\nResponde al último mensaje del usuario de la forma más útil y profesional posible. Si hay imágenes, tenlas en cuenta en tu análisis.\",\n        \"context\": \"ai: Lo siento, no pude procesar tu solicitud. Intenta nuevamente más tarde.\\nuser: hola\\nuser: me duele la cabeza\"\n    }\n    try:",
+        "detail": "test-prompt-cleaning",
+        "documentation": {}
+    },
+    {
+        "label": "test_simple_prompt",
+        "kind": 2,
+        "importPath": "test-prompt-cleaning",
+        "description": "test-prompt-cleaning",
+        "peekOfCode": "def test_simple_prompt():\n    \"\"\"Prueba con un prompt simple\"\"\"\n    print(\"\\n🧪 Probando prompt simple...\")\n    url = \"http://localhost:8000/api/process-text\"\n    data = {\n        \"prompt\": \"Hola, ¿cómo estás?\",\n        \"context\": \"Eres un asistente amigable\"\n    }\n    try:\n        response = requests.post(",
+        "detail": "test-prompt-cleaning",
+        "documentation": {}
+    },
+    {
         "label": "test_text_streaming",
         "kind": 2,
         "importPath": "test-streaming",
