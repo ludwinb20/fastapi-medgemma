@@ -181,24 +181,6 @@
         "documentation": {}
     },
     {
-        "label": "requests",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "requests",
-        "description": "requests",
-        "detail": "requests",
-        "documentation": {}
-    },
-    {
-        "label": "time",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "time",
-        "description": "time",
-        "detail": "time",
-        "documentation": {}
-    },
-    {
         "label": "AnalysisResult",
         "kind": 6,
         "importPath": "main",
@@ -248,7 +230,7 @@
         "kind": 2,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=500):\n    \"\"\"Genera respuesta en streaming\"\"\"\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\",\n        padding=True,\n        truncation=True,\n        max_length=2048\n    ).to(\"cuda\")",
+        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=500):\n    \"\"\"Genera respuesta en streaming real usando TextIteratorStreamer\"\"\"\n    from transformers import TextIteratorStreamer\n    from threading import Thread\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\",\n        padding=True,\n        truncation=True,",
         "detail": "main",
         "documentation": {}
     },
@@ -268,42 +250,6 @@
         "description": "main",
         "peekOfCode": "app = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\ndef clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:\n        if marker in prompt:",
         "detail": "main",
-        "documentation": {}
-    },
-    {
-        "label": "test_prompt_cleaning",
-        "kind": 2,
-        "importPath": "test-prompt-cleaning",
-        "description": "test-prompt-cleaning",
-        "peekOfCode": "def test_prompt_cleaning():\n    \"\"\"Prueba la limpieza de prompts específicos\"\"\"\n    print(\"🧪 Probando limpieza de prompts...\")\n    url = \"http://localhost:8000/api/process-text\"\n    # Datos de prueba (el caso problemático)\n    data = {\n        \"prompt\": \"Eres LucasMed, un asistente médico de IA en un chat con un doctor. Usa el contexto de los últimos mensajes para dar una respuesta precisa y útil.\\n\\nHistorial de mensajes:\\nai: Lo siento, no pude procesar tu solicitud. Intenta nuevamente más tarde.\\nuser: hola\\nuser: me duele la cabeza\\n\\nResponde al último mensaje del usuario de la forma más útil y profesional posible. Si hay imágenes, tenlas en cuenta en tu análisis.\",\n        \"context\": \"ai: Lo siento, no pude procesar tu solicitud. Intenta nuevamente más tarde.\\nuser: hola\\nuser: me duele la cabeza\"\n    }\n    try:",
-        "detail": "test-prompt-cleaning",
-        "documentation": {}
-    },
-    {
-        "label": "test_simple_prompt",
-        "kind": 2,
-        "importPath": "test-prompt-cleaning",
-        "description": "test-prompt-cleaning",
-        "peekOfCode": "def test_simple_prompt():\n    \"\"\"Prueba con un prompt simple\"\"\"\n    print(\"\\n🧪 Probando prompt simple...\")\n    url = \"http://localhost:8000/api/process-text\"\n    data = {\n        \"prompt\": \"Hola, ¿cómo estás?\",\n        \"context\": \"Eres un asistente amigable\"\n    }\n    try:\n        response = requests.post(",
-        "detail": "test-prompt-cleaning",
-        "documentation": {}
-    },
-    {
-        "label": "test_text_streaming",
-        "kind": 2,
-        "importPath": "test-streaming",
-        "description": "test-streaming",
-        "peekOfCode": "def test_text_streaming():\n    \"\"\"Prueba el streaming de texto\"\"\"\n    print(\"🧪 Probando streaming de texto...\")\n    url = \"http://localhost:8000/api/process-text-stream\"\n    # Datos de prueba\n    data = {\n        \"prompt\": \"Explica qué es la diabetes de manera simple\",\n        \"context\": \"Eres un asistente médico que explica conceptos médicos de forma clara\"\n    }\n    try:",
-        "detail": "test-streaming",
-        "documentation": {}
-    },
-    {
-        "label": "test_image_streaming",
-        "kind": 2,
-        "importPath": "test-streaming",
-        "description": "test-streaming",
-        "peekOfCode": "def test_image_streaming():\n    \"\"\"Prueba el streaming de imagen\"\"\"\n    print(\"\\n🧪 Probando streaming de imagen...\")\n    url = \"http://localhost:8000/api/process-image-stream\"\n    # Crear una imagen de prueba simple (1x1 pixel)\n    import base64\n    from PIL import Image\n    import io\n    # Crear imagen de prueba\n    img = Image.new('RGB', (100, 100), color='red')",
-        "detail": "test-streaming",
         "documentation": {}
     }
 ]
