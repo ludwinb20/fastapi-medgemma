@@ -18,6 +18,19 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Medical Image Analysis API", version="1.0")
 
+DEFAULT_SYSTEM_PROMPT = (
+    "Eres LucasMed, un asistente médico de IA.\n"
+    "- Responde SIEMPRE en español.\n"
+    "- Sé claro, profesional y conciso.\n"
+    "- Responde solo al último mensaje del usuario usando el contexto si existe.\n"
+    "- No uses el formato 'input:'/'output:'.\n"
+    "- Incluye advertencias de seguridad solo cuando sea relevante."
+)
+
+def get_system_prompt() -> str:
+    return os.getenv("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+
+
 def clean_response(full_response, prompt):
     """Limpia la respuesta removiendo el prompt original"""
     # Buscar el último token de asistente en el prompt
@@ -290,14 +303,13 @@ async def analyze_medical_image(
             images=[image],
             return_tensors="pt",
             padding=True,
-            truncation=True,
-            max_length=2048
+            truncation=False
         ).to("cuda")
 
         # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
-            max_new_tokens=500,
+            max_new_tokens=2048,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
@@ -347,6 +359,12 @@ async def process_text(
         # Estructura de mensajes para texto
         messages = [
             {
+                "role": "system",
+                "content": [
+                    {"type": "text", "text": get_system_prompt()}
+                ]
+            },
+            {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": full_prompt}
@@ -366,14 +384,13 @@ async def process_text(
             text=formatted_prompt,
             return_tensors="pt",
             padding=True,
-            truncation=True,
-            max_length=2048
+            truncation=False
         ).to("cuda")
 
         # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
-            max_new_tokens=500,
+            max_new_tokens=2048,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
@@ -417,6 +434,12 @@ async def process_text_stream(
         
         # Estructura de mensajes para texto
         messages = [
+            {
+                "role": "system",
+                "content": [
+                    {"type": "text", "text": get_system_prompt()}
+                ]
+            },
             {
                 "role": "user",
                 "content": [
@@ -486,6 +509,12 @@ async def process_image(
         # Estructura de mensajes para imagen
         messages = [
             {
+                "role": "system",
+                "content": [
+                    {"type": "text", "text": get_system_prompt()}
+                ]
+            },
+            {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": request.prompt},
@@ -507,14 +536,13 @@ async def process_image(
             images=[image],
             return_tensors="pt",
             padding=True,
-            truncation=True,
-            max_length=2048
+            truncation=False
         ).to("cuda")
 
         # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
-            max_new_tokens=500,
+            max_new_tokens=2048,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
@@ -575,6 +603,12 @@ async def process_image_stream(
 
         # Estructura de mensajes para imagen
         messages = [
+            {
+                "role": "system",
+                "content": [
+                    {"type": "text", "text": get_system_prompt()}
+                ]
+            },
             {
                 "role": "user",
                 "content": [
