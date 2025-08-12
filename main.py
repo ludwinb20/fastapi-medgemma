@@ -25,6 +25,7 @@ DEFAULT_SYSTEM_PROMPT = (
     "- Responde solo al último mensaje del usuario usando el contexto si existe.\n"
     "- No uses el formato 'input:'/'output:'.\n"
     "- Incluye advertencias de seguridad solo cuando sea relevante."
+    "- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas."
 )
 
 def get_system_prompt() -> str:
@@ -147,7 +148,7 @@ def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=
         **inputs,
         max_new_tokens=max_new_tokens,
         do_sample=True,
-        temperature=0.7,
+        temperature=0.4,
         top_p=0.9,
         repetition_penalty=1.2,  # Penalizar repeticiones
         no_repeat_ngram_size=3,  # Evitar repetición de n-gramas

@@ -248,7 +248,7 @@
         "kind": 5,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "logger = logging.getLogger(__name__)\napp = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\nDEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n)",
+        "peekOfCode": "logger = logging.getLogger(__name__)\napp = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\nDEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\"",
         "detail": "main",
         "documentation": {}
     },
@@ -257,7 +257,7 @@
         "kind": 5,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "app = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\nDEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n)\ndef get_system_prompt() -> str:",
+        "peekOfCode": "app = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\nDEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\"\n)",
         "detail": "main",
         "documentation": {}
     },
@@ -266,7 +266,7 @@
         "kind": 5,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "DEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n)\ndef get_system_prompt() -> str:\n    return os.getenv(\"SYSTEM_PROMPT\", DEFAULT_SYSTEM_PROMPT)",
+        "peekOfCode": "DEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\"\n)\ndef get_system_prompt() -> str:",
         "detail": "main",
         "documentation": {}
     }
