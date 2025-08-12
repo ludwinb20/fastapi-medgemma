@@ -26,6 +26,7 @@ DEFAULT_SYSTEM_PROMPT = (
     "- No uses el formato 'input:'/'output:'.\n"
     "- Incluye advertencias de seguridad solo cuando sea relevante."
     "- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas."
+    "- Responde solamente a la pregunta sin agregar advertencias o introducciones innecesarias, a menos que el usuario las solicite."
 )
 
 def get_system_prompt() -> str:
@@ -344,9 +345,9 @@ async def analyze_medical_image(
         # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
-            max_new_tokens=1000,
-            do_sample=True,
-            temperature=0.7,
+            max_new_tokens=500,
+            do_sample=False,
+            temperature=0,
             top_p=0.9,
             repetition_penalty=1.2,  # Penalizar repeticiones
             no_repeat_ngram_size=3,  # Evitar repetición de n-gramas
