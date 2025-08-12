@@ -221,7 +221,7 @@
         "kind": 2,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "def get_system_prompt() -> str:\n    return os.getenv(\"SYSTEM_PROMPT\", DEFAULT_SYSTEM_PROMPT)\ndef clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:",
+        "peekOfCode": "def get_system_prompt() -> str:\n    return os.getenv(\"SYSTEM_PROMPT\", DEFAULT_SYSTEM_PROMPT)\ndef clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original y repeticiones\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:",
         "detail": "main",
         "documentation": {}
     },
@@ -230,7 +230,7 @@
         "kind": 2,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "def clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:\n        if marker in prompt:\n            parts = prompt.split(marker)",
+        "peekOfCode": "def clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original y repeticiones\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:\n        if marker in prompt:\n            parts = prompt.split(marker)",
         "detail": "main",
         "documentation": {}
     },

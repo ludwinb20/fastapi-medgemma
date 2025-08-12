@@ -32,7 +32,7 @@ def get_system_prompt() -> str:
 
 
 def clean_response(full_response, prompt):
-    """Limpia la respuesta removiendo el prompt original"""
+    """Limpia la respuesta removiendo el prompt original y repeticiones"""
     # Buscar el último token de asistente en el prompt
     assistant_markers = ["<|im_start|>assistant", "<|im_end|>", "<|im_start|>user", "<|im_end|>"]
     
@@ -85,7 +85,9 @@ def clean_response(full_response, prompt):
             "Para ayudarte mejor",
             "¿Podrías decirme",
             "Te recomiendo",
-            "Mientras tanto"
+            "Mientras tanto",
+            "¡Hola!",
+            "Hola,"
         ]
         
         for pattern in response_patterns:
@@ -101,6 +103,22 @@ def clean_response(full_response, prompt):
     
     # Limpiar líneas vacías al inicio
     cleaned = cleaned.lstrip()
+    
+    # Remover repeticiones excesivas
+    sentences = cleaned.split('.')
+    if len(sentences) > 2:
+        # Mantener solo oraciones únicas
+        unique_sentences = []
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if sentence and sentence not in unique_sentences:
+                unique_sentences.append(sentence)
+        
+        # Si hay muchas repeticiones, mantener solo las primeras 2-3 oraciones únicas
+        if len(unique_sentences) > 3:
+            unique_sentences = unique_sentences[:3]
+        
+        cleaned = '. '.join(unique_sentences) + ('.' if cleaned.endswith('.') else '')
     
     return cleaned.strip()
 
@@ -128,9 +146,11 @@ def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=
     generation_kwargs = dict(
         **inputs,
         max_new_tokens=max_new_tokens,
-        do_sample=False,
+        do_sample=True,
         temperature=0.7,
         top_p=0.9,
+        repetition_penalty=1.2,  # Penalizar repeticiones
+        no_repeat_ngram_size=3,  # Evitar repetición de n-gramas
         pad_token_id=processor.tokenizer.eos_token_id,
         eos_token_id=processor.tokenizer.eos_token_id,
         use_cache=True,
@@ -142,13 +162,27 @@ def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=
     thread.start()
 
     assistant_markers = ["<|im_start|>assistant", "<|im_end|>", "<|im_start|>user", "<|im_end|>"]
+    full_response = ""
+    last_sentences = []
 
     try:
         for new_text in streamer:
             # Limpiar marcadores de chat
             for marker in assistant_markers:
                 new_text = new_text.replace(marker, "")
+            
             if new_text:
+                full_response += new_text
+                
+                # Detectar repeticiones
+                sentences = full_response.split('.')
+                if len(sentences) > 3:
+                    # Verificar si las últimas 3 oraciones son similares
+                    recent_sentences = sentences[-3:]
+                    if len(set(recent_sentences)) == 1 and len(recent_sentences[0].strip()) > 10:
+                        # Detener si hay repetición excesiva
+                        break
+                
                 yield f"data: {json.dumps({'token': new_text, 'finished': False})}\n\n"
     finally:
         thread.join()
@@ -309,10 +343,12 @@ async def analyze_medical_image(
         # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
-            max_new_tokens=2048,
+            max_new_tokens=1000,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
+            repetition_penalty=1.2,  # Penalizar repeticiones
+            no_repeat_ngram_size=3,  # Evitar repetición de n-gramas
             pad_token_id=processor.tokenizer.eos_token_id,
             eos_token_id=processor.tokenizer.eos_token_id,
             use_cache=True
@@ -390,10 +426,12 @@ async def process_text(
         # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
-            max_new_tokens=2048,
+            max_new_tokens=1000,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
+            repetition_penalty=1.2,  # Penalizar repeticiones
+            no_repeat_ngram_size=3,  # Evitar repetición de n-gramas
             pad_token_id=processor.tokenizer.eos_token_id,
             eos_token_id=processor.tokenizer.eos_token_id,
             use_cache=True
@@ -428,25 +466,50 @@ async def process_text_stream(
         logger.info(f"Procesando texto en streaming para usuario: {user_claims.get('uid', 'unknown')}")
         
         # Construir prompt con contexto si está disponible
-        full_prompt = request.prompt
         if request.context:
-            full_prompt = f"Contexto: {request.context}\n\nPregunta: {request.prompt}"
-        
-        # Estructura de mensajes para texto
-        messages = [
-            {
-                "role": "system",
-                "content": [
-                    {"type": "text", "text": get_system_prompt()}
-                ]
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": full_prompt}
-                ]
-            }
-        ]
+            # Si hay contexto, crear una conversación más estructurada
+            messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": get_system_prompt()}
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.context}
+                    ]
+                },
+                {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "text", "text": "Entiendo el contexto. ¿En qué puedo ayudarte?"}
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt}
+                    ]
+                }
+            ]
+        else:
+            # Sin contexto, usar estructura simple
+            messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": get_system_prompt()}
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt}
+                    ]
+                }
+            ]
 
         # Aplicar template de chat
         formatted_prompt = processor.apply_chat_template(
@@ -457,7 +520,7 @@ async def process_text_stream(
 
         def generate_stream():
             try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt):
+                for chunk in generate_stream_response(model, processor, formatted_prompt, max_new_tokens=1000):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming: {str(e)}")
@@ -542,10 +605,12 @@ async def process_image(
         # Generar respuesta con parámetros compatibles
         outputs = model.generate(
             **inputs,
-            max_new_tokens=2048,
+            max_new_tokens=1000,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
+            repetition_penalty=1.2,  # Penalizar repeticiones
+            no_repeat_ngram_size=3,  # Evitar repetición de n-gramas
             pad_token_id=processor.tokenizer.eos_token_id,
             eos_token_id=processor.tokenizer.eos_token_id,
             use_cache=True
@@ -627,7 +692,7 @@ async def process_image_stream(
 
         def generate_stream():
             try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt):
+                for chunk in generate_stream_response(model, processor, formatted_prompt, max_new_tokens=1000):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming de imagen: {str(e)}")
