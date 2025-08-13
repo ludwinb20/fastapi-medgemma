@@ -72,6 +72,14 @@
         "documentation": {}
     },
     {
+        "label": "TextIteratorStreamer",
+        "importPath": "transformers",
+        "description": "transformers",
+        "isExtraImport": true,
+        "detail": "transformers",
+        "documentation": {}
+    },
+    {
         "label": "Image",
         "importPath": "PIL",
         "description": "PIL",
@@ -107,6 +115,14 @@
     },
     {
         "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Generator",
         "importPath": "typing",
         "description": "typing",
         "isExtraImport": true,
@@ -181,12 +197,43 @@
         "documentation": {}
     },
     {
-        "label": "AnalysisResult",
-        "kind": 6,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "class AnalysisResult(BaseModel):\n    result: str\n    model: str = \"medgemma-4b-it\"\n    processing_time: Optional[float] = None\n# Nuevos modelos para los endpoints\nclass TextProcessRequest(BaseModel):\n    prompt: str\n    context: Optional[str] = None\nclass ImageProcessRequest(BaseModel):\n    imageDataUri: str",
-        "detail": "main",
+        "label": "get_system_prompt",
+        "importPath": "utils",
+        "description": "utils",
+        "isExtraImport": true,
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "clean_response",
+        "importPath": "utils",
+        "description": "utils",
+        "isExtraImport": true,
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "generate_stream_response",
+        "importPath": "utils",
+        "description": "utils",
+        "isExtraImport": true,
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "process_context_messages",
+        "importPath": "utils",
+        "description": "utils",
+        "isExtraImport": true,
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "Thread",
+        "importPath": "threading",
+        "description": "threading",
+        "isExtraImport": true,
+        "detail": "threading",
         "documentation": {}
     },
     {
@@ -217,38 +264,11 @@
         "documentation": {}
     },
     {
-        "label": "get_system_prompt",
-        "kind": 2,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "def get_system_prompt() -> str:\n    return os.getenv(\"SYSTEM_PROMPT\", DEFAULT_SYSTEM_PROMPT)\ndef clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original y repeticiones\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:",
-        "detail": "main",
-        "documentation": {}
-    },
-    {
-        "label": "clean_response",
-        "kind": 2,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "def clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original y repeticiones\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:\n        if marker in prompt:\n            parts = prompt.split(marker)",
-        "detail": "main",
-        "documentation": {}
-    },
-    {
-        "label": "generate_stream_response",
-        "kind": 2,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, max_new_tokens=500):\n    \"\"\"Genera respuesta en streaming real usando TextIteratorStreamer\"\"\"\n    from transformers import TextIteratorStreamer\n    from threading import Thread\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\",\n        padding=True,\n        truncation=True,",
-        "detail": "main",
-        "documentation": {}
-    },
-    {
         "label": "logger",
         "kind": 5,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "logger = logging.getLogger(__name__)\napp = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\nDEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\"",
+        "peekOfCode": "logger = logging.getLogger(__name__)\napp = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\n# Inicializar Firebase Admin\ntry:\n    # Puedes usar una variable de entorno para la ruta del archivo\n    service_account_path = os.getenv(\"FIREBASE_SERVICE_ACCOUNT_PATH\", \"serviceAccountKey.json\")\n    cred = credentials.Certificate(service_account_path)\n    firebase_admin.initialize_app(cred)\n    logger.info(\"Firebase Admin inicializado correctamente\")\nexcept Exception as e:",
         "detail": "main",
         "documentation": {}
     },
@@ -257,17 +277,71 @@
         "kind": 5,
         "importPath": "main",
         "description": "main",
-        "peekOfCode": "app = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\nDEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\"\n    \"- Responde solamente a la pregunta sin agregar advertencias o introducciones innecesarias, a menos que el usuario las solicite.\"",
+        "peekOfCode": "app = FastAPI(title=\"Medical Image Analysis API\", version=\"1.0\")\n# Inicializar Firebase Admin\ntry:\n    # Puedes usar una variable de entorno para la ruta del archivo\n    service_account_path = os.getenv(\"FIREBASE_SERVICE_ACCOUNT_PATH\", \"serviceAccountKey.json\")\n    cred = credentials.Certificate(service_account_path)\n    firebase_admin.initialize_app(cred)\n    logger.info(\"Firebase Admin inicializado correctamente\")\nexcept Exception as e:\n    logger.error(f\"Error al inicializar Firebase Admin: {str(e)}\")",
         "detail": "main",
+        "documentation": {}
+    },
+    {
+        "label": "get_system_prompt",
+        "kind": 2,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "def get_system_prompt() -> str:\n    \"\"\"Obtiene el prompt del sistema desde variables de entorno o usa el default\"\"\"\n    return os.getenv(\"SYSTEM_PROMPT\", DEFAULT_SYSTEM_PROMPT)\ndef clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original y repeticiones\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente",
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "clean_response",
+        "kind": 2,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "def clean_response(full_response, prompt):\n    \"\"\"Limpia la respuesta removiendo el prompt original y repeticiones\"\"\"\n    # Buscar el último token de asistente en el prompt\n    assistant_markers = [\"<|im_start|>assistant\", \"<|im_end|>\", \"<|im_start|>user\", \"<|im_end|>\"]\n    # Intentar diferentes estrategias de limpieza\n    cleaned = full_response\n    # Estrategia 1: Buscar después del último marcador de asistente\n    for marker in assistant_markers:\n        if marker in prompt:\n            parts = prompt.split(marker)",
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "generate_stream_response",
+        "kind": 2,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, user_input, max_new_tokens=500):\n    \"\"\"Genera respuesta en streaming real usando TextIteratorStreamer\"\"\"\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\",\n        padding=True,\n        truncation=True,\n        max_length=2048\n    ).to(\"cuda\")",
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "process_context_messages",
+        "kind": 2,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "def process_context_messages(context: str) -> list:\n    \"\"\"Procesa el contexto y construye la lista de mensajes dinámicamente\"\"\"\n    messages = []\n    # Procesar el contexto línea por línea\n    context_lines = context.strip().split('\\n')\n    for line in context_lines:\n        line = line.strip()\n        if not line:\n            continue\n        # Detectar si es mensaje de usuario o asistente",
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "is_trivial_question",
+        "kind": 2,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "def is_trivial_question(text: str) -> bool:\n    text = text.strip()\n    # Preguntas triviales: cortas, directas, sin contexto ni razonamiento\n    if len(text) < 30 and text.endswith(\"?\"):\n        return True\n    # Preguntas tipo saludo o confirmación\n    if text.lower() in {\"hola\", \"gracias\", \"ok\", \"buenos días\"}:\n        return True\n    return False",
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "kind": 5,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "logger = logging.getLogger(__name__)\nDEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\\n\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\\n\"\n    \"- Responde solamente a la pregunta sin agregar advertencias o introducciones innecesarias, a menos que el usuario las solicite.\\n\"",
+        "detail": "utils",
         "documentation": {}
     },
     {
         "label": "DEFAULT_SYSTEM_PROMPT",
         "kind": 5,
-        "importPath": "main",
-        "description": "main",
-        "peekOfCode": "DEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\"\n    \"- Responde solamente a la pregunta sin agregar advertencias o introducciones innecesarias, a menos que el usuario las solicite.\"\n)",
-        "detail": "main",
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "DEFAULT_SYSTEM_PROMPT = (\n    \"Eres LucasMed, un asistente médico de IA.\\n\"\n    \"- Responde SIEMPRE en español.\\n\"\n    \"- Sé claro, profesional y conciso.\\n\"\n    \"- Responde solo al último mensaje del usuario usando el contexto si existe.\\n\"\n    \"- No uses el formato 'input:'/'output:'.\\n\"\n    \"- Incluye advertencias de seguridad solo cuando sea relevante.\\n\"\n    \"- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\\n\"\n    \"- Responde solamente a la pregunta sin agregar advertencias o introducciones innecesarias, a menos que el usuario las solicite.\\n\"\n)",
+        "detail": "utils",
         "documentation": {}
     }
 ]
