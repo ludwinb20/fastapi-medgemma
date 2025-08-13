@@ -115,7 +115,17 @@ def clean_response(full_response, prompt):
     
     return cleaned.strip()
 
-def generate_stream_response(model, processor, formatted_prompt, user_input, max_new_tokens=500):
+def is_trivial_question(text: str) -> bool:
+    text = text.strip()
+    # Preguntas triviales: cortas, directas, sin contexto ni razonamiento
+    if len(text) < 30 and text.endswith("?"):
+        return True
+    # Preguntas tipo saludo o confirmación
+    if text.lower() in {"hola", "gracias", "ok", "buenos días"}:
+        return True
+    return False
+
+def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):
     """Genera respuesta en streaming real usando TextIteratorStreamer"""
     # Procesar con el modelo
     inputs = processor(
@@ -133,13 +143,13 @@ def generate_stream_response(model, processor, formatted_prompt, user_input, max
         skip_special_tokens=True
     )
 
-    if is_trivial_question(user_input):
+    # Determinar parámetros de generación basados en el tipo de pregunta
+    if user_input and is_trivial_question(user_input):
         do_sample = False
         temperature = 0.1
     else:
         do_sample = True
         temperature = 0.4
-        
         
     generation_kwargs = dict(
         **inputs,
@@ -148,7 +158,7 @@ def generate_stream_response(model, processor, formatted_prompt, user_input, max
         do_sample=do_sample,
         temperature=temperature,
         repetition_penalty=1.15,  # Penalizar repeticiones
-        pad_token_id=processor.tokenizer.pad_token_id,
+        pad_token_id=processor.tokenizer.eos_token_id,  # Usar eos_token_id como pad_token_id si no existe
         eos_token_id=processor.tokenizer.eos_token_id,
         use_cache=True,
         streamer=streamer,
@@ -186,9 +196,41 @@ def generate_stream_response(model, processor, formatted_prompt, user_input, max
     # Señalizar fin
     yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
 
+def clean_context_from_streaming_errors(context: str) -> str:
+    """Limpia el contexto de errores de streaming y datos JSON"""
+    if not context:
+        return context
+    
+    # Remover líneas que contengan errores de streaming
+    lines = context.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Ignorar líneas que contengan errores de streaming
+        if any(error_pattern in line.lower() for error_pattern in [
+            'data:', '{"error":', 'http 500', 'internal server error', 
+            'finished:', 'token:', '{"token"'
+        ]):
+            continue
+            
+        # Ignorar líneas que sean solo JSON
+        if line.startswith('{') and line.endswith('}'):
+            continue
+            
+        cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines)
+
 def process_context_messages(context: str) -> list:
     """Procesa el contexto y construye la lista de mensajes dinámicamente"""
     messages = []
+    
+    # Limpiar el contexto de posibles errores de streaming
+    context = clean_context_from_streaming_errors(context)
     
     # Procesar el contexto línea por línea
     context_lines = context.strip().split('\n')
@@ -198,7 +240,27 @@ def process_context_messages(context: str) -> list:
             continue
             
         # Detectar si es mensaje de usuario o asistente
-        if line.startswith('user:') or line.startswith('User:') or line.startswith('Usuario:'):
+        # Formato 1: [Usuario] o [Asistente]
+        if line.startswith('[Usuario]') or line.startswith('[User]'):
+            # Mensaje de usuario
+            user_message = line.split(']', 1)[1].strip() if ']' in line else line
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_message}
+                ]
+            })
+        elif line.startswith('[Asistente]') or line.startswith('[Assistant]'):
+            # Mensaje de asistente
+            assistant_message = line.split(']', 1)[1].strip() if ']' in line else line
+            messages.append({
+                "role": "assistant",
+                "content": [
+                    {"type": "text", "text": assistant_message}
+                ]
+            })
+        # Formato 2: user: o assistant: (formato original)
+        elif line.startswith('user:') or line.startswith('User:') or line.startswith('Usuario:'):
             # Mensaje de usuario
             user_message = line.split(':', 1)[1].strip() if ':' in line else line
             messages.append({
@@ -225,14 +287,40 @@ def process_context_messages(context: str) -> list:
                 ]
             })
     
-    return messages
-
-def is_trivial_question(text: str) -> bool:
-    text = text.strip()
-    # Preguntas triviales: cortas, directas, sin contexto ni razonamiento
-    if len(text) < 30 and text.endswith("?"):
-        return True
-    # Preguntas tipo saludo o confirmación
-    if text.lower() in {"hola", "gracias", "ok", "buenos días"}:
-        return True
-    return False
+    # Asegurar que los roles alternen correctamente
+    cleaned_messages = []
+    last_role = None
+    
+    for message in messages:
+        current_role = message["role"]
+        
+        # Si es el primer mensaje, agregarlo
+        if last_role is None:
+            cleaned_messages.append(message)
+            last_role = current_role
+            continue
+        
+        # Si el rol actual es diferente al anterior, agregarlo
+        if current_role != last_role:
+            cleaned_messages.append(message)
+            last_role = current_role
+        else:
+            # Si hay roles consecutivos iguales, combinar el contenido
+            if cleaned_messages:
+                # Combinar el texto del mensaje actual con el último mensaje del mismo rol
+                current_text = message["content"][0]["text"]
+                last_text = cleaned_messages[-1]["content"][0]["text"]
+                combined_text = f"{last_text}\n{current_text}"
+                cleaned_messages[-1]["content"][0]["text"] = combined_text
+    
+    # Asegurar que la conversación termine con un mensaje de usuario
+    if cleaned_messages and cleaned_messages[-1]["role"] == "assistant":
+        # Si termina con assistant, agregar un mensaje de usuario vacío para que el modelo pueda responder
+        cleaned_messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": ""}
+            ]
+        })
+    
+    return cleaned_messages

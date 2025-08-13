@@ -300,11 +300,29 @@
         "documentation": {}
     },
     {
+        "label": "is_trivial_question",
+        "kind": 2,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "def is_trivial_question(text: str) -> bool:\n    text = text.strip()\n    # Preguntas triviales: cortas, directas, sin contexto ni razonamiento\n    if len(text) < 30 and text.endswith(\"?\"):\n        return True\n    # Preguntas tipo saludo o confirmación\n    if text.lower() in {\"hola\", \"gracias\", \"ok\", \"buenos días\"}:\n        return True\n    return False\ndef generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):",
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
         "label": "generate_stream_response",
         "kind": 2,
         "importPath": "utils",
         "description": "utils",
-        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, user_input, max_new_tokens=500):\n    \"\"\"Genera respuesta en streaming real usando TextIteratorStreamer\"\"\"\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\",\n        padding=True,\n        truncation=True,\n        max_length=2048\n    ).to(\"cuda\")",
+        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):\n    \"\"\"Genera respuesta en streaming real usando TextIteratorStreamer\"\"\"\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\",\n        padding=True,\n        truncation=True,\n        max_length=2048\n    ).to(\"cuda\")",
+        "detail": "utils",
+        "documentation": {}
+    },
+    {
+        "label": "clean_context_from_streaming_errors",
+        "kind": 2,
+        "importPath": "utils",
+        "description": "utils",
+        "peekOfCode": "def clean_context_from_streaming_errors(context: str) -> str:\n    \"\"\"Limpia el contexto de errores de streaming y datos JSON\"\"\"\n    if not context:\n        return context\n    # Remover líneas que contengan errores de streaming\n    lines = context.split('\\n')\n    cleaned_lines = []\n    for line in lines:\n        line = line.strip()\n        if not line:",
         "detail": "utils",
         "documentation": {}
     },
@@ -313,16 +331,7 @@
         "kind": 2,
         "importPath": "utils",
         "description": "utils",
-        "peekOfCode": "def process_context_messages(context: str) -> list:\n    \"\"\"Procesa el contexto y construye la lista de mensajes dinámicamente\"\"\"\n    messages = []\n    # Procesar el contexto línea por línea\n    context_lines = context.strip().split('\\n')\n    for line in context_lines:\n        line = line.strip()\n        if not line:\n            continue\n        # Detectar si es mensaje de usuario o asistente",
-        "detail": "utils",
-        "documentation": {}
-    },
-    {
-        "label": "is_trivial_question",
-        "kind": 2,
-        "importPath": "utils",
-        "description": "utils",
-        "peekOfCode": "def is_trivial_question(text: str) -> bool:\n    text = text.strip()\n    # Preguntas triviales: cortas, directas, sin contexto ni razonamiento\n    if len(text) < 30 and text.endswith(\"?\"):\n        return True\n    # Preguntas tipo saludo o confirmación\n    if text.lower() in {\"hola\", \"gracias\", \"ok\", \"buenos días\"}:\n        return True\n    return False",
+        "peekOfCode": "def process_context_messages(context: str) -> list:\n    \"\"\"Procesa el contexto y construye la lista de mensajes dinámicamente\"\"\"\n    messages = []\n    # Limpiar el contexto de posibles errores de streaming\n    context = clean_context_from_streaming_errors(context)\n    # Procesar el contexto línea por línea\n    context_lines = context.strip().split('\\n')\n    for line in context_lines:\n        line = line.strip()\n        if not line:",
         "detail": "utils",
         "documentation": {}
     },
