@@ -153,22 +153,14 @@ async def process_text(
         # Procesar con el modelo
         inputs = processor(
             text=formatted_prompt,
-            return_tensors="pt",
-            padding=True,
-            truncation=False
+            return_tensors="pt"
         ).to("cuda")
 
-        # Generar respuesta con parámetros compatibles
+        # Generar respuesta con parámetros simples
         outputs = model.generate(
             **inputs,
-            max_new_tokens=1000,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            repetition_penalty=1.15,  # Penalizar repeticiones
-            pad_token_id=processor.tokenizer.eos_token_id,
-            eos_token_id=processor.tokenizer.eos_token_id,
-            use_cache=True
+            max_new_tokens=200,
+            do_sample=False
         )
 
         # Decodificar y limpiar respuesta
@@ -238,6 +230,9 @@ async def process_text_stream(
                     ]
                 }
             ]
+            
+            print("*****************************************messages****************************************")
+            print(messages)
 
         # Aplicar template de chat
         formatted_prompt = processor.apply_chat_template(
@@ -248,7 +243,7 @@ async def process_text_stream(
 
         def generate_stream():
             try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=1000):
+                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=200):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming: {str(e)}")
@@ -325,22 +320,14 @@ async def process_image(
         inputs = processor(
             text=formatted_prompt,
             images=[image],
-            return_tensors="pt",
-            padding=True,
-            truncation=False
+            return_tensors="pt"
         ).to("cuda")
 
-        # Generar respuesta con parámetros compatibles
+        # Generar respuesta con parámetros simples
         outputs = model.generate(
             **inputs,
-            max_new_tokens=1000,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            repetition_penalty=1.15,  # Penalizar repeticiones
-            pad_token_id=processor.tokenizer.pad_token_id,
-            eos_token_id=processor.tokenizer.eos_token_id,
-            use_cache=True
+            max_new_tokens=200,
+            do_sample=False
         )
 
         # Decodificar y limpiar respuesta
@@ -419,7 +406,7 @@ async def process_image_stream(
 
         def generate_stream():
             try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=1000):
+                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=200):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming de imagen: {str(e)}")

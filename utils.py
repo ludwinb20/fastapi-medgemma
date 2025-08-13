@@ -125,15 +125,12 @@ def is_trivial_question(text: str) -> bool:
         return True
     return False
 
-def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):
+def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=200):
     """Genera respuesta en streaming real usando TextIteratorStreamer"""
     # Procesar con el modelo
     inputs = processor(
         text=formatted_prompt,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=2048
+        return_tensors="pt"
     ).to("cuda")
 
     # Streamer que produce texto incrementalmente
@@ -143,24 +140,11 @@ def generate_stream_response(model, processor, formatted_prompt, user_input=None
         skip_special_tokens=True
     )
 
-    # Determinar parámetros de generación basados en el tipo de pregunta
-    if user_input and is_trivial_question(user_input):
-        do_sample = False
-        temperature = 0.1
-    else:
-        do_sample = True
-        temperature = 0.4
-        
+    # Parámetros simples como en el ejemplo oficial
     generation_kwargs = dict(
         **inputs,
         max_new_tokens=max_new_tokens,
-        top_p=0.9,
-        do_sample=do_sample,
-        temperature=temperature,
-        repetition_penalty=1.15,  # Penalizar repeticiones
-        pad_token_id=processor.tokenizer.eos_token_id,  # Usar eos_token_id como pad_token_id si no existe
-        eos_token_id=processor.tokenizer.eos_token_id,
-        use_cache=True,
+        do_sample=False,
         streamer=streamer,
     )
 
