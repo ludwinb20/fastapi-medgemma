@@ -314,14 +314,14 @@ def process_context_messages(context: str) -> list:
                 cleaned_messages[-1]["content"][0]["text"] = combined_text
     
     # Asegurar que la conversación termine con un mensaje de usuario
-    if cleaned_messages and cleaned_messages[-1]["role"] == "assistant":
-        # Si termina con assistant, agregar un mensaje de usuario vacío para que el modelo pueda responder
-        cleaned_messages.append({
-            "role": "user",
-            "content": [
-                {"type": "text", "text": ""}
-            ]
-        })
+    # if cleaned_messages and cleaned_messages[-1]["role"] == "assistant":
+    #     # Si termina con assistant, agregar un mensaje de usuario vacío para que el modelo pueda responder
+    #     cleaned_messages.append({
+    #         "role": "user",
+    #         "content": [
+    #             {"type": "text", "text": ""}
+    #         ]
+    #     })
     
     print("*****************************************cleaned_messages****************************************")
     print(cleaned_messages)
