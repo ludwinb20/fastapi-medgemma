@@ -323,4 +323,7 @@ def process_context_messages(context: str) -> list:
             ]
         })
     
+    print("*****************************************cleaned_messages****************************************")
+    print(cleaned_messages)
+    
     return cleaned_messages
