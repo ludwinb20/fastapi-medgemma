@@ -469,33 +469,60 @@ async def process_text_stream(
         
         # Construir prompt con contexto si está disponible
         if request.context:
-            # Si hay contexto, crear una conversación más estructurada
+            # Si hay contexto, procesar los mensajes dinámicamente
             messages = [
                 {
                     "role": "system",
                     "content": [
                         {"type": "text", "text": get_system_prompt()}
                     ]
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": request.context}
-                    ]
-                },
-                {
-                    "role": "assistant",
-                    "content": [
-                        {"type": "text", "text": "Entiendo el contexto. ¿En qué puedo ayudarte?"}
-                    ]
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": request.prompt}
-                    ]
                 }
             ]
+            
+            # Procesar el contexto línea por línea
+            context_lines = request.context.strip().split('\n')
+            for line in context_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Detectar si es mensaje de usuario o asistente
+                if line.startswith('user:') or line.startswith('User:') or line.startswith('Usuario:'):
+                    # Mensaje de usuario
+                    user_message = line.split(':', 1)[1].strip() if ':' in line else line
+                    messages.append({
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_message}
+                        ]
+                    })
+                elif line.startswith('assistant:') or line.startswith('Assistant:') or line.startswith('Asistente:'):
+                    # Mensaje de asistente
+                    assistant_message = line.split(':', 1)[1].strip() if ':' in line else line
+                    messages.append({
+                        "role": "assistant",
+                        "content": [
+                            {"type": "text", "text": assistant_message}
+                        ]
+                    })
+                else:
+                    # Si no tiene prefijo, asumir que es mensaje de usuario
+                    messages.append({
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": line}
+                        ]
+                    })
+            
+            # Agregar el mensaje actual del usuario
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": request.prompt}
+                ]
+            })
+            
+            
         else:
             # Sin contexto, usar estructura simple
             messages = [
