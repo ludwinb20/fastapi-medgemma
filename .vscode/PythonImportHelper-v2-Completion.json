@@ -304,7 +304,7 @@
         "kind": 2,
         "importPath": "utils",
         "description": "utils",
-        "peekOfCode": "def is_trivial_question(text: str) -> bool:\n    text = text.strip()\n    # Preguntas triviales: cortas, directas, sin contexto ni razonamiento\n    if len(text) < 30 and text.endswith(\"?\"):\n        return True\n    # Preguntas tipo saludo o confirmación\n    if text.lower() in {\"hola\", \"gracias\", \"ok\", \"buenos días\"}:\n        return True\n    return False\ndef generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=200):",
+        "peekOfCode": "def is_trivial_question(text: str) -> bool:\n    text = text.strip()\n    # Preguntas triviales: cortas, directas, sin contexto ni razonamiento\n    if len(text) < 30 and text.endswith(\"?\"):\n        return True\n    # Preguntas tipo saludo o confirmación\n    if text.lower() in {\"hola\", \"gracias\", \"ok\", \"buenos días\"}:\n        return True\n    return False\ndef generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):",
         "detail": "utils",
         "documentation": {}
     },
@@ -313,7 +313,7 @@
         "kind": 2,
         "importPath": "utils",
         "description": "utils",
-        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=200):\n    \"\"\"Genera respuesta en streaming real usando TextIteratorStreamer\"\"\"\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\"\n    ).to(\"cuda\")\n    # Streamer que produce texto incrementalmente\n    streamer = TextIteratorStreamer(\n        processor.tokenizer,",
+        "peekOfCode": "def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):\n    \"\"\"Genera respuesta en streaming real usando TextIteratorStreamer\"\"\"\n    # Procesar con el modelo\n    inputs = processor(\n        text=formatted_prompt,\n        return_tensors=\"pt\"\n    ).to(\"cuda\")\n    # Streamer que produce texto incrementalmente\n    streamer = TextIteratorStreamer(\n        processor.tokenizer,",
         "detail": "utils",
         "documentation": {}
     },

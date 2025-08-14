@@ -125,7 +125,7 @@ def is_trivial_question(text: str) -> bool:
         return True
     return False
 
-def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=200):
+def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):
     """Genera respuesta en streaming real usando TextIteratorStreamer"""
     # Procesar con el modelo
     inputs = processor(
