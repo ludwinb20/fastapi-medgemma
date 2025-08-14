@@ -331,7 +331,7 @@
         "kind": 2,
         "importPath": "utils",
         "description": "utils",
-        "peekOfCode": "def process_context_messages(context: str) -> list:\n    \"\"\"Procesa el contexto y construye la lista de mensajes dinámicamente\"\"\"\n    messages = []\n    # Limpiar el contexto de posibles errores de streaming\n    context = clean_context_from_streaming_errors(context)\n    # Procesar el contexto línea por línea\n    context_lines = context.strip().split('\\n')\n    for line in context_lines:\n        line = line.strip()\n        if not line:",
+        "peekOfCode": "def process_context_messages(context: str) -> list:\n    \"\"\"Procesa el contexto y construye la lista de mensajes dinámicamente\"\"\"\n    messages = []\n    # Limpiar el contexto de posibles errores de streaming\n    context = clean_context_from_streaming_errors(context)\n    # Procesar el contexto línea por línea\n    context_lines = context.strip().split('\\n')\n    current_message = None\n    current_role = None\n    for line in context_lines:",
         "detail": "utils",
         "documentation": {}
     },

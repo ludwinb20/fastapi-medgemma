@@ -218,58 +218,96 @@ def process_context_messages(context: str) -> list:
     
     # Procesar el contexto línea por línea
     context_lines = context.strip().split('\n')
+    current_message = None
+    current_role = None
+    
     for line in context_lines:
         line = line.strip()
         if not line:
             continue
             
-        # Detectar si es mensaje de usuario o asistente
+        # Detectar si es inicio de un nuevo mensaje
         # Formato 1: [Usuario] o [Asistente]
         if line.startswith('[Usuario]') or line.startswith('[User]'):
-            # Mensaje de usuario
+            # Guardar mensaje anterior si existe
+            if current_message:
+                messages.append(current_message)
+            
+            # Iniciar nuevo mensaje de usuario
             user_message = line.split(']', 1)[1].strip() if ']' in line else line
-            messages.append({
+            current_message = {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": user_message}
                 ]
-            })
+            }
+            current_role = "user"
+            
         elif line.startswith('[Asistente]') or line.startswith('[Assistant]'):
-            # Mensaje de asistente
+            # Guardar mensaje anterior si existe
+            if current_message:
+                messages.append(current_message)
+            
+            # Iniciar nuevo mensaje de asistente
             assistant_message = line.split(']', 1)[1].strip() if ']' in line else line
-            messages.append({
+            current_message = {
                 "role": "assistant",
                 "content": [
                     {"type": "text", "text": assistant_message}
                 ]
-            })
+            }
+            current_role = "assistant"
+            
         # Formato 2: user: o assistant: (formato original)
         elif line.startswith('user:') or line.startswith('User:') or line.startswith('Usuario:'):
-            # Mensaje de usuario
+            # Guardar mensaje anterior si existe
+            if current_message:
+                messages.append(current_message)
+            
+            # Iniciar nuevo mensaje de usuario
             user_message = line.split(':', 1)[1].strip() if ':' in line else line
-            messages.append({
+            current_message = {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": user_message}
                 ]
-            })
+            }
+            current_role = "user"
+            
         elif line.startswith('assistant:') or line.startswith('Assistant:') or line.startswith('Asistente:'):
-            # Mensaje de asistente
+            # Guardar mensaje anterior si existe
+            if current_message:
+                messages.append(current_message)
+            
+            # Iniciar nuevo mensaje de asistente
             assistant_message = line.split(':', 1)[1].strip() if ':' in line else line
-            messages.append({
+            current_message = {
                 "role": "assistant",
                 "content": [
                     {"type": "text", "text": assistant_message}
                 ]
-            })
+            }
+            current_role = "assistant"
+            
         else:
-            # Si no tiene prefijo, asumir que es mensaje de usuario
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": line}
-                ]
-            })
+            # Si no tiene prefijo, es continuación del mensaje actual
+            if current_message:
+                # Agregar la línea al mensaje actual
+                current_text = current_message["content"][0]["text"]
+                current_message["content"][0]["text"] = f"{current_text}\n{line}"
+            else:
+                # Si no hay mensaje actual, asumir que es mensaje de usuario
+                current_message = {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": line}
+                    ]
+                }
+                current_role = "user"
+    
+    # Agregar el último mensaje si existe
+    if current_message:
+        messages.append(current_message)
     
     # Asegurar que los roles alternen correctamente
     cleaned_messages = []
@@ -296,16 +334,6 @@ def process_context_messages(context: str) -> list:
                 last_text = cleaned_messages[-1]["content"][0]["text"]
                 combined_text = f"{last_text}\n{current_text}"
                 cleaned_messages[-1]["content"][0]["text"] = combined_text
-    
-    # Asegurar que la conversación termine con un mensaje de usuario
-    # if cleaned_messages and cleaned_messages[-1]["role"] == "assistant":
-    #     # Si termina con assistant, agregar un mensaje de usuario vacío para que el modelo pueda responder
-    #     cleaned_messages.append({
-    #         "role": "user",
-    #         "content": [
-    #             {"type": "text", "text": ""}
-    #         ]
-    #     })
     
     print("*****************************************cleaned_messages****************************************")
     print(cleaned_messages)
