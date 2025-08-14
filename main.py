@@ -243,7 +243,7 @@ async def process_text_stream(
 
         def generate_stream():
             try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=200):
+                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=500):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming: {str(e)}")

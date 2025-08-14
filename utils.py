@@ -127,11 +127,15 @@ def is_trivial_question(text: str) -> bool:
 
 def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):
     """Genera respuesta en streaming real usando TextIteratorStreamer"""
+    logger.info(f"Iniciando generación con max_new_tokens={max_new_tokens}")
+    
     # Procesar con el modelo
     inputs = processor(
         text=formatted_prompt,
         return_tensors="pt"
     ).to("cuda")
+    
+    logger.info(f"Prompt procesado, tokens de entrada: {len(inputs.input_ids[0])}")
 
     # Streamer que produce texto incrementalmente
     streamer = TextIteratorStreamer(
@@ -164,18 +168,20 @@ def generate_stream_response(model, processor, formatted_prompt, user_input=None
             if new_text:
                 full_response += new_text
                 
-                # Detectar repeticiones
+                # Detectar repeticiones (menos agresivo)
                 sentences = full_response.split('.')
-                if len(sentences) > 3:
-                    # Verificar si las últimas 3 oraciones son similares
-                    recent_sentences = sentences[-3:]
-                    if len(set(recent_sentences)) == 1 and len(recent_sentences[0].strip()) > 10:
-                        # Detener si hay repetición excesiva
+                if len(sentences) > 5:
+                    # Verificar si las últimas 5 oraciones son exactamente iguales
+                    recent_sentences = sentences[-5:]
+                    if len(set(recent_sentences)) == 1 and len(recent_sentences[0].strip()) > 20:
+                        # Detener solo si hay repetición excesiva y clara
+                        logger.info("Detectada repetición excesiva, deteniendo generación")
                         break
                 
                 yield f"data: {json.dumps({'token': new_text, 'finished': False})}\n\n"
     finally:
         thread.join()
+        logger.info(f"Generación completada. Respuesta total: {len(full_response)} caracteres")
 
     # Señalizar fin
     yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
