@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 import firebase_admin
 from firebase_admin import auth, credentials
-from utils import get_system_prompt, clean_response, generate_stream_response, process_context_messages
+from utils import get_system_prompt, clean_response, generate_stream_response, process_context_messages, process_context_messages_with_images
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -66,6 +66,11 @@ class TextProcessRequest(BaseModel):
 class ImageProcessRequest(BaseModel):
     imageDataUri: str
     prompt: str
+
+class ImageProcessWithContextRequest(BaseModel):
+    imageDataUri: str
+    prompt: str
+    context: Optional[str] = None
 
 class ProcessResponse(BaseModel):
     response: str
@@ -426,4 +431,106 @@ async def process_image_stream(
         raise
     except Exception as e:
         logger.error(f"Error procesando imagen en streaming: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@app.post("/api/process-image-stream-with-context")
+async def process_image_stream_with_context(
+    request: ImageProcessWithContextRequest,
+    user_claims: dict = Depends(verify_api_key)
+):
+    """Procesa imagen usando MedGemma-4b-it con streaming y contexto que puede incluir imágenes"""
+    try:
+        logger.info(f"Procesando imagen con contexto en streaming para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Validar y decodificar data URI de la imagen actual
+        if not request.imageDataUri.startswith("data:image/"):
+            raise HTTPException(status_code=400, detail="Formato de imagen inválido")
+        
+        try:
+            # Extraer la parte base64
+            header, encoded = request.imageDataUri.split(",", 1)
+            image_data = BytesIO(encoded.encode('utf-8'))
+            
+            # Decodificar base64
+            import base64
+            image_bytes = base64.b64decode(encoded)
+            current_image = Image.open(BytesIO(image_bytes))
+            
+            if current_image.mode != 'RGB':
+                current_image = current_image.convert('RGB')
+                
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Error decodificando imagen")
+
+        # Construir mensajes con contexto si está disponible
+        if request.context:
+            # Si hay contexto, procesar los mensajes dinámicamente incluyendo imágenes
+            messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": get_system_prompt()}
+                    ]
+                }
+            ]
+            
+            # Procesar el contexto usando la función que maneja imágenes
+            context_messages = process_context_messages_with_images(request.context)
+            messages.extend(context_messages)
+            
+            # Agregar el mensaje actual del usuario con la imagen
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": request.prompt},
+                    {"type": "image", "image": current_image}
+                ]
+            })
+        else:
+            # Sin contexto, usar estructura simple
+            messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": get_system_prompt()}
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt},
+                        {"type": "image", "image": current_image}
+                    ]
+                }
+            ]
+
+        # Aplicar template de chat
+        formatted_prompt = processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+
+        def generate_stream():
+            try:
+                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=500):
+                    yield chunk
+            except Exception as e:
+                logger.error(f"Error en streaming de imagen con contexto: {str(e)}")
+                yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
+
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Content-Type": "text/event-stream"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error procesando imagen con contexto en streaming: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
