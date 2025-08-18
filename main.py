@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 import firebase_admin
 from firebase_admin import auth, credentials
-from utils import get_system_prompt, clean_response, generate_stream_response, process_context_messages, process_context_messages_with_images
+from utils import get_system_prompt, clean_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -411,7 +411,7 @@ async def process_image_stream(
 
         def generate_stream():
             try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=200):
+                for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, [image], request.prompt, max_new_tokens=200):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming de imagen: {str(e)}")
@@ -513,7 +513,19 @@ async def process_image_stream_with_context(
 
         def generate_stream():
             try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=500):
+                # Recopilar todas las imágenes del contexto y la imagen actual
+                all_images = [current_image]
+                
+                # Si hay contexto, extraer imágenes del contexto
+                if request.context:
+                    context_messages = process_context_messages_with_images(request.context)
+                    for message in context_messages:
+                        if message["role"] == "user":
+                            for content in message["content"]:
+                                if content["type"] == "image":
+                                    all_images.append(content["image"])
+                
+                for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=500):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming de imagen con contexto: {str(e)}")

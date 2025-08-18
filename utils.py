@@ -186,6 +186,68 @@ def generate_stream_response(model, processor, formatted_prompt, user_input=None
     # Señalizar fin
     yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
 
+def generate_stream_response_with_images(model, processor, formatted_prompt, images, user_input=None, max_new_tokens=500):
+    """Genera respuesta en streaming real usando TextIteratorStreamer para contenido multimodal"""
+    logger.info(f"Iniciando generación multimodal con max_new_tokens={max_new_tokens}")
+    
+    # Procesar con el modelo incluyendo imágenes
+    inputs = processor(
+        text=formatted_prompt,
+        images=images,
+        return_tensors="pt"
+    ).to("cuda")
+    
+    logger.info(f"Prompt multimodal procesado, tokens de entrada: {len(inputs.input_ids[0])}")
+
+    # Streamer que produce texto incrementalmente
+    streamer = TextIteratorStreamer(
+        processor.tokenizer,
+        skip_prompt=True,
+        skip_special_tokens=True
+    )
+
+    # Parámetros simples como en el ejemplo oficial
+    generation_kwargs = dict(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=False,
+        streamer=streamer,
+    )
+
+    # Ejecutar la generación en un hilo separado
+    thread = Thread(target=model.generate, kwargs=generation_kwargs)
+    thread.start()
+
+    assistant_markers = ["<|im_start|>assistant", "<|im_end|>", "<|im_start|>user", "<|im_end|>"]
+    full_response = ""
+
+    try:
+        for new_text in streamer:
+            # Limpiar marcadores de chat
+            for marker in assistant_markers:
+                new_text = new_text.replace(marker, "")
+            
+            if new_text:
+                full_response += new_text
+                
+                # Detectar repeticiones (menos agresivo)
+                sentences = full_response.split('.')
+                if len(sentences) > 5:
+                    # Verificar si las últimas 5 oraciones son exactamente iguales
+                    recent_sentences = sentences[-5:]
+                    if len(set(recent_sentences)) == 1 and len(recent_sentences[0].strip()) > 20:
+                        # Detener solo si hay repetición excesiva y clara
+                        logger.info("Detectada repetición excesiva, deteniendo generación")
+                        break
+                
+                yield f"data: {json.dumps({'token': new_text, 'finished': False})}\n\n"
+    finally:
+        thread.join()
+        logger.info(f"Generación multimodal completada. Respuesta total: {len(full_response)} caracteres")
+
+    # Señalizar fin
+    yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
+
 def clean_context_from_streaming_errors(context: str) -> str:
     """Limpia el contexto de errores de streaming y datos JSON"""
     if not context:
