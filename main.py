@@ -66,11 +66,9 @@ class TextProcessRequest(BaseModel):
 class ImageProcessRequest(BaseModel):
     imageDataUri: str
     prompt: str
-
-class ImageProcessWithContextRequest(BaseModel):
-    imageDataUri: str
-    prompt: str
     context: Optional[str] = None
+
+
 
 class ProcessResponse(BaseModel):
     response: str
@@ -110,7 +108,9 @@ async def process_text(
         
         # Construir mensajes con contexto si está disponible
         if request.context:
-            # Si hay contexto, procesar los mensajes dinámicamente
+            # Verificar si hay imágenes en el contexto
+            has_images = "data:image/" in request.context
+            
             messages = [
                 {
                     "role": "system",
@@ -120,17 +120,65 @@ async def process_text(
                 }
             ]
             
-            # Procesar el contexto usando la función de utils
-            context_messages = process_context_messages(request.context)
-            messages.extend(context_messages)
-            
-            # Agregar el mensaje actual del usuario
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": request.prompt}
-                ]
-            })
+            if has_images:
+                # Si hay imágenes, usar la función que maneja imágenes
+                context_messages = process_context_messages_with_images(request.context)
+                messages.extend(context_messages)
+                
+                # Recopilar todas las imágenes del contexto
+                all_images = []
+                for message in context_messages:
+                    if message["role"] == "user":
+                        for content in message["content"]:
+                            if content["type"] == "image":
+                                all_images.append(content["image"])
+                
+                # Agregar el mensaje actual del usuario
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt}
+                    ]
+                })
+                
+                # Aplicar template de chat
+                formatted_prompt = processor.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+
+                # Procesar con el modelo incluyendo imágenes
+                inputs = processor(
+                    text=formatted_prompt,
+                    images=all_images,
+                    return_tensors="pt"
+                ).to("cuda")
+            else:
+                # Si no hay imágenes, usar la función de texto normal
+                context_messages = process_context_messages(request.context)
+                messages.extend(context_messages)
+                
+                # Agregar el mensaje actual del usuario
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt}
+                    ]
+                })
+                
+                # Aplicar template de chat
+                formatted_prompt = processor.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+
+                # Procesar con el modelo
+                inputs = processor(
+                    text=formatted_prompt,
+                    return_tensors="pt"
+                ).to("cuda")
         else:
             # Sin contexto, usar estructura simple
             messages = [
@@ -148,23 +196,23 @@ async def process_text(
                 }
             ]
 
-        # Aplicar template de chat
-        formatted_prompt = processor.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
+            # Aplicar template de chat
+            formatted_prompt = processor.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
 
-        # Procesar con el modelo
-        inputs = processor(
-            text=formatted_prompt,
-            return_tensors="pt"
-        ).to("cuda")
+            # Procesar con el modelo
+            inputs = processor(
+                text=formatted_prompt,
+                return_tensors="pt"
+            ).to("cuda")
 
         # Generar respuesta con parámetros simples
         outputs = model.generate(
             **inputs,
-            max_new_tokens=200,
+            max_new_tokens=800,
             do_sample=False
         )
 
@@ -198,7 +246,9 @@ async def process_text_stream(
         
         # Construir mensajes con contexto si está disponible
         if request.context:
-            # Si hay contexto, procesar los mensajes dinámicamente
+            # Verificar si hay imágenes en el contexto
+            has_images = "data:image/" in request.context
+            
             messages = [
                 {
                     "role": "system",
@@ -208,17 +258,68 @@ async def process_text_stream(
                 }
             ]
             
-            # Procesar el contexto usando la función de utils
-            context_messages = process_context_messages(request.context)
-            messages.extend(context_messages)
-            
-            # Agregar el mensaje actual del usuario
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": request.prompt}
-                ]
-            })
+            if has_images:
+                # Si hay imágenes, usar la función que maneja imágenes
+                context_messages = process_context_messages_with_images(request.context)
+                messages.extend(context_messages)
+                
+                # Recopilar todas las imágenes del contexto
+                all_images = []
+                for message in context_messages:
+                    if message["role"] == "user":
+                        for content in message["content"]:
+                            if content["type"] == "image":
+                                all_images.append(content["image"])
+                
+                # Agregar el mensaje actual del usuario
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt}
+                    ]
+                })
+                
+                # Aplicar template de chat
+                formatted_prompt = processor.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+
+                def generate_stream():
+                    try:
+                        for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=800):
+                            yield chunk
+                    except Exception as e:
+                        logger.error(f"Error en streaming con imágenes: {str(e)}")
+                        yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
+            else:
+                # Si no hay imágenes, usar la función de texto normal
+                context_messages = process_context_messages(request.context)
+                messages.extend(context_messages)
+                
+                # Agregar el mensaje actual del usuario
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt}
+                    ]
+                })
+                
+                # Aplicar template de chat
+                formatted_prompt = processor.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+
+                def generate_stream():
+                    try:
+                        for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=800):
+                            yield chunk
+                    except Exception as e:
+                        logger.error(f"Error en streaming: {str(e)}")
+                        yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
         else:
             # Sin contexto, usar estructura simple
             messages = [
@@ -239,20 +340,20 @@ async def process_text_stream(
             print("*****************************************messages****************************************")
             print(messages)
 
-        # Aplicar template de chat
-        formatted_prompt = processor.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
+            # Aplicar template de chat
+            formatted_prompt = processor.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
 
-        def generate_stream():
-            try:
-                for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=500):
-                    yield chunk
-            except Exception as e:
-                logger.error(f"Error en streaming: {str(e)}")
-                yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
+            def generate_stream():
+                try:
+                    for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=800):
+                        yield chunk
+                except Exception as e:
+                    logger.error(f"Error en streaming: {str(e)}")
+                    yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
 
         return StreamingResponse(
             generate_stream(),
@@ -297,22 +398,47 @@ async def process_image(
         except Exception as e:
             raise HTTPException(status_code=400, detail="Error decodificando imagen")
 
-        # Estructura de mensajes para imagen
-        messages = [
-            {
-                "role": "system",
-                "content": [
-                    {"type": "text", "text": get_system_prompt()}
-                ]
-            },
-            {
+        # Construir mensajes con contexto si está disponible
+        if request.context:
+            # Si hay contexto, procesar los mensajes dinámicamente incluyendo imágenes
+            messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": get_system_prompt()}
+                    ]
+                }
+            ]
+            
+            # Procesar el contexto usando la función que maneja imágenes
+            context_messages = process_context_messages_with_images(request.context)
+            messages.extend(context_messages)
+            
+            # Agregar el mensaje actual del usuario con la imagen
+            messages.append({
                 "role": "user",
                 "content": [
                     {"type": "text", "text": request.prompt},
                     {"type": "image", "image": image}
                 ]
-            }
-        ]
+            })
+        else:
+            # Sin contexto, usar estructura simple
+            messages = [
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": get_system_prompt()}
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": request.prompt},
+                        {"type": "image", "image": image}
+                    ]
+                }
+            ]
 
         # Aplicar template de chat
         formatted_prompt = processor.apply_chat_template(
@@ -321,17 +447,29 @@ async def process_image(
             add_generation_prompt=True
         )
 
+        # Recopilar todas las imágenes del contexto y la imagen actual
+        all_images = [image]
+        
+        # Si hay contexto, extraer imágenes del contexto
+        if request.context:
+            context_messages = process_context_messages_with_images(request.context)
+            for message in context_messages:
+                if message["role"] == "user":
+                    for content in message["content"]:
+                        if content["type"] == "image":
+                            all_images.append(content["image"])
+
         # Procesar con el modelo
         inputs = processor(
             text=formatted_prompt,
-            images=[image],
+            images=all_images,
             return_tensors="pt"
         ).to("cuda")
 
         # Generar respuesta con parámetros simples
         outputs = model.generate(
             **inputs,
-            max_new_tokens=200,
+            max_new_tokens=800,
             do_sample=False
         )
 
@@ -341,7 +479,6 @@ async def process_image(
         
         # Contar tokens (aproximado)
         tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
-        
         logger.info(f"Procesamiento de imagen completado. Tokens usados: {tokens_used}")
         
         return ProcessResponse(
@@ -385,83 +522,6 @@ async def process_image_stream(
         except Exception as e:
             raise HTTPException(status_code=400, detail="Error decodificando imagen")
 
-        # Estructura de mensajes para imagen
-        messages = [
-            {
-                "role": "system",
-                "content": [
-                    {"type": "text", "text": get_system_prompt()}
-                ]
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": request.prompt},
-                    {"type": "image", "image": image}
-                ]
-            }
-        ]
-
-        # Aplicar template de chat
-        formatted_prompt = processor.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-
-        def generate_stream():
-            try:
-                for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, [image], request.prompt, max_new_tokens=200):
-                    yield chunk
-            except Exception as e:
-                logger.error(f"Error en streaming de imagen: {str(e)}")
-                yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
-
-        return StreamingResponse(
-            generate_stream(),
-            media_type="text/plain",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Content-Type": "text/event-stream"
-            }
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error procesando imagen en streaming: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-
-@app.post("/api/process-image-stream-with-context")
-async def process_image_stream_with_context(
-    request: ImageProcessWithContextRequest,
-    user_claims: dict = Depends(verify_api_key)
-):
-    """Procesa imagen usando MedGemma-4b-it con streaming y contexto que puede incluir imágenes"""
-    try:
-        logger.info(f"Procesando imagen con contexto en streaming para usuario: {user_claims.get('uid', 'unknown')}")
-        
-        # Validar y decodificar data URI de la imagen actual
-        if not request.imageDataUri.startswith("data:image/"):
-            raise HTTPException(status_code=400, detail="Formato de imagen inválido")
-        
-        try:
-            # Extraer la parte base64
-            header, encoded = request.imageDataUri.split(",", 1)
-            image_data = BytesIO(encoded.encode('utf-8'))
-            
-            # Decodificar base64
-            import base64
-            image_bytes = base64.b64decode(encoded)
-            current_image = Image.open(BytesIO(image_bytes))
-            
-            if current_image.mode != 'RGB':
-                current_image = current_image.convert('RGB')
-                
-        except Exception as e:
-            raise HTTPException(status_code=400, detail="Error decodificando imagen")
-
         # Construir mensajes con contexto si está disponible
         if request.context:
             # Si hay contexto, procesar los mensajes dinámicamente incluyendo imágenes
@@ -483,7 +543,7 @@ async def process_image_stream_with_context(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": request.prompt},
-                    {"type": "image", "image": current_image}
+                    {"type": "image", "image": image}
                 ]
             })
         else:
@@ -499,7 +559,7 @@ async def process_image_stream_with_context(
                     "role": "user",
                     "content": [
                         {"type": "text", "text": request.prompt},
-                        {"type": "image", "image": current_image}
+                        {"type": "image", "image": image}
                     ]
                 }
             ]
@@ -514,7 +574,7 @@ async def process_image_stream_with_context(
         def generate_stream():
             try:
                 # Recopilar todas las imágenes del contexto y la imagen actual
-                all_images = [current_image]
+                all_images = [image]
                 
                 # Si hay contexto, extraer imágenes del contexto
                 if request.context:
@@ -525,10 +585,10 @@ async def process_image_stream_with_context(
                                 if content["type"] == "image":
                                     all_images.append(content["image"])
                 
-                for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=500):
+                for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=800):
                     yield chunk
             except Exception as e:
-                logger.error(f"Error en streaming de imagen con contexto: {str(e)}")
+                logger.error(f"Error en streaming de imagen: {str(e)}")
                 yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
 
         return StreamingResponse(
@@ -544,5 +604,7 @@ async def process_image_stream_with_context(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error procesando imagen con contexto en streaming: {str(e)}", exc_info=True)
+        logger.error(f"Error procesando imagen en streaming: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
