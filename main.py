@@ -247,6 +247,8 @@ async def process_text_stream(
     try:
         logger.info(f"Procesando texto en streaming para usuario: {user_claims.get('uid', 'unknown')}")
         print(f"DEBUG: Contexto recibido: {request.context[:200] if request.context else 'None'}...")
+        print(f"DEBUG: Longitud del contexto: {len(request.context) if request.context else 0}")
+        print(f"DEBUG: Contexto completo: {request.context}")
         
         # Construir mensajes con contexto si está disponible
         if request.context:
