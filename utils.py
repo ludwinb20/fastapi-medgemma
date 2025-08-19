@@ -190,6 +190,12 @@ def generate_stream_response_with_images(model, processor, formatted_prompt, ima
     """Genera respuesta en streaming real usando TextIteratorStreamer para contenido multimodal"""
     logger.info(f"Iniciando generación multimodal con max_new_tokens={max_new_tokens}")
     
+    # Validar que hay imágenes para procesar
+    if not images or len(images) == 0:
+        logger.warning("No hay imágenes para procesar, usando generación de texto normal")
+        # Si no hay imágenes, usar la función de texto normal
+        return generate_stream_response(model, processor, formatted_prompt, user_input, max_new_tokens)
+    
     # Procesar con el modelo incluyendo imágenes
     inputs = processor(
         text=formatted_prompt,

@@ -108,8 +108,11 @@ async def process_text(
         
         # Construir mensajes con contexto si está disponible
         if request.context:
-            # Verificar si hay imágenes en el contexto
-            has_images = "data:image/" in request.context
+            # Verificar si hay imágenes reales en el contexto (data URI válidos)
+            has_images = "data:image/" in request.context and any(
+                line.strip().startswith("data:image/") and "," in line 
+                for line in request.context.split('\n')
+            )
             
             messages = [
                 {
@@ -246,8 +249,11 @@ async def process_text_stream(
         
         # Construir mensajes con contexto si está disponible
         if request.context:
-            # Verificar si hay imágenes en el contexto
-            has_images = "data:image/" in request.context
+            # Verificar si hay imágenes reales en el contexto (data URI válidos)
+            has_images = "data:image/" in request.context and any(
+                line.strip().startswith("data:image/") and "," in line 
+                for line in request.context.split('\n')
+            )
             
             messages = [
                 {
