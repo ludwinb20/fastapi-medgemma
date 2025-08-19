@@ -381,22 +381,55 @@ def process_context_messages(context: str) -> list:
             current_role = "assistant"
             
         elif is_image:
-            # Es una imagen, agregarla al mensaje actual o crear uno nuevo
-            if current_message and current_role == "user":
-                # Agregar la imagen al mensaje de usuario actual
-                current_message["content"].append({"type": "image", "image": line})
-            else:
-                # Crear nuevo mensaje de usuario con la imagen
-                if current_message:
-                    messages.append(current_message)
+            # Es una imagen, convertir data URI a PIL Image
+            try:
+                # Extraer la parte base64
+                header, encoded = line.split(",", 1)
+                image_bytes = base64.b64decode(encoded)
+                image = Image.open(BytesIO(image_bytes))
                 
-                current_message = {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": line}
-                    ]
-                }
-                current_role = "user"
+                if image.mode != 'RGB':
+                    image = image.convert('RGB')
+                
+                # Agregar la imagen al mensaje actual o crear uno nuevo
+                if current_message and current_role == "user":
+                    # Agregar la imagen al mensaje de usuario actual
+                    current_message["content"].append({"type": "image", "image": image})
+                else:
+                    # Crear nuevo mensaje de usuario con la imagen
+                    if current_message:
+                        messages.append(current_message)
+                    
+                    current_message = {
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "image": image}
+                        ]
+                    }
+                    current_role = "user"
+                    
+            except Exception as e:
+                logger.error(f"Error procesando imagen en contexto: {str(e)}")
+                # Si hay error, tratar como texto
+                if current_message:
+                    text_content = None
+                    for content in current_message["content"]:
+                        if content["type"] == "text":
+                            text_content = content
+                            break
+                    
+                    if text_content:
+                        text_content["text"] = f"{text_content['text']}\n{line}"
+                    else:
+                        current_message["content"].append({"type": "text", "text": line})
+                else:
+                    current_message = {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": line}
+                        ]
+                    }
+                    current_role = "user"
             
         else:
             # Si no tiene prefijo, es continuación del mensaje actual
@@ -471,6 +504,16 @@ def process_context_messages(context: str) -> list:
     
     print("*****************************************cleaned_messages****************************************")
     print(cleaned_messages)
+    
+    # Contar imágenes en los mensajes
+    image_count = 0
+    for message in cleaned_messages:
+        if message["role"] == "user":
+            for content in message["content"]:
+                if content["type"] == "image":
+                    image_count += 1
+    
+    logger.info(f"Procesamiento completado. {len(cleaned_messages)} mensajes, {image_count} imágenes encontradas")
     
     return cleaned_messages
 
