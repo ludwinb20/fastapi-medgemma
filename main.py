@@ -246,6 +246,7 @@ async def process_text_stream(
     """Procesa texto usando MedGemma-4b-it con streaming"""
     try:
         logger.info(f"Procesando texto en streaming para usuario: {user_claims.get('uid', 'unknown')}")
+        print(f"DEBUG: Contexto recibido: {request.context[:200] if request.context else 'None'}...")
         
         # Construir mensajes con contexto si está disponible
         if request.context:
