@@ -581,15 +581,21 @@ async def process_image_stream(
             try:
                 # Recopilar todas las imágenes del contexto y la imagen actual
                 all_images = [image]
+                logger.info(f"Imagen actual agregada, total: {len(all_images)}")
                 
                 # Si hay contexto, extraer imágenes del contexto
                 if request.context:
                     context_messages = process_context_messages_with_images(request.context)
-                    for message in context_messages:
+                    logger.info(f"Contexto procesado, {len(context_messages)} mensajes encontrados")
+                    
+                    for i, message in enumerate(context_messages):
                         if message["role"] == "user":
                             for content in message["content"]:
                                 if content["type"] == "image":
                                     all_images.append(content["image"])
+                                    logger.info(f"Imagen {len(all_images)} agregada desde mensaje {i}")
+                
+                logger.info(f"Total de imágenes a procesar: {len(all_images)}")
                 
                 for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=800):
                     yield chunk

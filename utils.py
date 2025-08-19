@@ -197,6 +197,7 @@ def generate_stream_response_with_images(model, processor, formatted_prompt, ima
         return generate_stream_response(model, processor, formatted_prompt, user_input, max_new_tokens)
     
     # Procesar con el modelo incluyendo imágenes
+    logger.info(f"Procesando {len(images)} imágenes con el modelo")
     inputs = processor(
         text=formatted_prompt,
         images=images,
@@ -204,6 +205,8 @@ def generate_stream_response_with_images(model, processor, formatted_prompt, ima
     ).to("cuda")
     
     logger.info(f"Prompt multimodal procesado, tokens de entrada: {len(inputs.input_ids[0])}")
+    logger.info(f"Tipo de inputs: {type(inputs)}")
+    logger.info(f"Claves de inputs: {inputs.keys() if hasattr(inputs, 'keys') else 'No es un dict'}")
 
     # Streamer que produce texto incrementalmente
     streamer = TextIteratorStreamer(
@@ -228,6 +231,7 @@ def generate_stream_response_with_images(model, processor, formatted_prompt, ima
     full_response = ""
 
     try:
+        token_count = 0
         for new_text in streamer:
             # Limpiar marcadores de chat
             for marker in assistant_markers:
@@ -235,6 +239,7 @@ def generate_stream_response_with_images(model, processor, formatted_prompt, ima
             
             if new_text:
                 full_response += new_text
+                token_count += 1
                 
                 # Detectar repeticiones (menos agresivo)
                 sentences = full_response.split('.')
@@ -247,9 +252,18 @@ def generate_stream_response_with_images(model, processor, formatted_prompt, ima
                         break
                 
                 yield f"data: {json.dumps({'token': new_text, 'finished': False})}\n\n"
+        
+        # Si no se generó ningún token, enviar un mensaje de error
+        if token_count == 0:
+            logger.warning("No se generaron tokens, enviando mensaje de error")
+            yield f"data: {json.dumps({'token': 'No se pudo generar una respuesta. Por favor, intenta de nuevo.', 'finished': False})}\n\n"
+            
+    except Exception as e:
+        logger.error(f"Error durante la generación multimodal: {str(e)}")
+        yield f"data: {json.dumps({'token': f'Error en la generación: {str(e)}', 'finished': False})}\n\n"
     finally:
         thread.join()
-        logger.info(f"Generación multimodal completada. Respuesta total: {len(full_response)} caracteres")
+        logger.info(f"Generación multimodal completada. Tokens generados: {token_count}, Respuesta total: {len(full_response)} caracteres")
 
     # Señalizar fin
     yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
