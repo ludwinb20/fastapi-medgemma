@@ -284,9 +284,13 @@ def clean_context_from_streaming_errors(context: str) -> str:
             
         # Ignorar líneas que contengan errores de streaming
         if any(error_pattern in line.lower() for error_pattern in [
-            'data:', '{"error":', 'http 500', 'internal server error', 
+            '{"error":', 'http 500', 'internal server error', 
             'finished:', 'token:', '{"token"'
         ]):
+            continue
+            
+        # Ignorar líneas que empiecen con 'data:' pero NO sean imágenes
+        if line.startswith('data:') and not line.startswith('data:image/'):
             continue
             
         # Ignorar líneas que sean solo JSON
