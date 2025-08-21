@@ -10,14 +10,17 @@ import torch
 logger = logging.getLogger(__name__)
 
 DEFAULT_SYSTEM_PROMPT = (
-    "Eres LucasMed, un asistente médico de IA.\n"
+    "Eres LucasMed, un asistente médico de IA especializado en proporcionar respuestas detalladas y completas.\n"
     "- Responde SIEMPRE en español.\n"
-    "- Sé claro, profesional y conciso.\n"
+    "- Sé claro, profesional y COMPLETO en tus explicaciones.\n"
+    "- Proporciona respuestas detalladas que incluyan contexto, explicaciones paso a paso, y consideraciones adicionales cuando sea apropiado.\n"
     "- Responde solo al último mensaje del usuario usando el contexto si existe.\n"
     "- No uses el formato 'input:'/'output:'.\n"
     "- Incluye advertencias de seguridad solo cuando sea relevante.\n"
     "- Como parte del contexto, vas a recibir mensajes enviados por el usuario y mensajes enviados por el asistente. No repitas respuestas del asistente, ni redundes en ellas.\n"
-    "- Responde solamente a la pregunta sin agregar advertencias o introducciones innecesarias, a menos que el usuario las solicite.\n"
+    "- Cuando sea apropiado, incluye información adicional como: causas, síntomas, tratamientos, prevención, y recomendaciones generales.\n"
+    "- Estructura tus respuestas de manera lógica y fácil de seguir.\n"
+    "- No te limites a respuestas cortas; proporciona información completa y útil.\n"
 )
 
 def get_system_prompt() -> str:
@@ -125,7 +128,7 @@ def is_trivial_question(text: str) -> bool:
         return True
     return False
 
-def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=500):
+def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=1500):
     """Genera respuesta en streaming real usando TextIteratorStreamer"""
     logger.info(f"Iniciando generación con max_new_tokens={max_new_tokens}")
     
@@ -144,11 +147,16 @@ def generate_stream_response(model, processor, formatted_prompt, user_input=None
         skip_special_tokens=True
     )
 
-    # Parámetros simples como en el ejemplo oficial
+    # Parámetros optimizados para respuestas más extensas y detalladas
     generation_kwargs = dict(
         **inputs,
         max_new_tokens=max_new_tokens,
-        do_sample=False,
+        do_sample=True,           # Habilitar muestreo para mayor diversidad
+        temperature=0.7,          # Temperatura moderada para balance entre creatividad y coherencia
+        top_p=0.9,               # Nucleus sampling para mejor calidad
+        repetition_penalty=1.1,   # Penalizar repeticiones
+        length_penalty=1.0,       # No penalizar respuestas largas
+        early_stopping=False,     # Permitir que la respuesta se complete naturalmente
         streamer=streamer,
     )
 
@@ -186,7 +194,7 @@ def generate_stream_response(model, processor, formatted_prompt, user_input=None
     # Señalizar fin
     yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
 
-def generate_stream_response_with_images(model, processor, formatted_prompt, images, user_input=None, max_new_tokens=500):
+def generate_stream_response_with_images(model, processor, formatted_prompt, images, user_input=None, max_new_tokens=1500):
     """Genera respuesta en streaming real usando TextIteratorStreamer para contenido multimodal"""
     logger.info(f"Iniciando generación multimodal con max_new_tokens={max_new_tokens}")
     
@@ -215,11 +223,16 @@ def generate_stream_response_with_images(model, processor, formatted_prompt, ima
         skip_special_tokens=True
     )
 
-    # Parámetros simples como en el ejemplo oficial
+    # Parámetros optimizados para respuestas más extensas y detalladas
     generation_kwargs = dict(
         **inputs,
         max_new_tokens=max_new_tokens,
-        do_sample=False,
+        do_sample=True,           # Habilitar muestreo para mayor diversidad
+        temperature=0.7,          # Temperatura moderada para balance entre creatividad y coherencia
+        top_p=0.9,               # Nucleus sampling para mejor calidad
+        repetition_penalty=1.1,   # Penalizar repeticiones
+        length_penalty=1.0,       # No penalizar respuestas largas
+        early_stopping=False,     # Permitir que la respuesta se complete naturalmente
         streamer=streamer,
     )
 

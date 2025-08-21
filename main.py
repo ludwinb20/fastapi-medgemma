@@ -212,11 +212,16 @@ async def process_text(
                 return_tensors="pt"
             ).to("cuda")
 
-        # Generar respuesta con parámetros simples
+        # Generar respuesta con parámetros optimizados para respuestas más extensas
         outputs = model.generate(
             **inputs,
-            max_new_tokens=800,
-            do_sample=False
+            max_new_tokens=2048,  # Aumentado de 800 a 2048 para respuestas más largas
+            do_sample=True,       # Habilitar muestreo para mayor diversidad
+            temperature=0.7,      # Temperatura moderada para balance entre creatividad y coherencia
+            top_p=0.9,           # Nucleus sampling para mejor calidad
+            repetition_penalty=1.1,  # Penalizar repeticiones
+            length_penalty=1.0,   # No penalizar respuestas largas
+            early_stopping=False  # Permitir que la respuesta se complete naturalmente
         )
 
         # Decodificar y limpiar respuesta
@@ -297,7 +302,7 @@ async def process_text_stream(
 
                 def generate_stream():
                     try:
-                        for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=800):
+                        for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=1500):
                             yield chunk
                     except Exception as e:
                         logger.error(f"Error en streaming con imágenes: {str(e)}")
@@ -324,7 +329,7 @@ async def process_text_stream(
 
                 def generate_stream():
                     try:
-                        for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=800):
+                        for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=1500):
                             yield chunk
                     except Exception as e:
                         logger.error(f"Error en streaming: {str(e)}")
@@ -358,10 +363,10 @@ async def process_text_stream(
 
             def generate_stream():
                 try:
-                    for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=800):
+                    for chunk in generate_stream_response(model, processor, formatted_prompt, request.prompt, max_new_tokens=1500):
                         yield chunk
                 except Exception as e:
-                    logger.error(f"Error en streaming: {str(e)}")
+                    logger.error(f"Error in streaming: {str(e)}")
                     yield f"data: {json.dumps({'error': str(e), 'finished': True})}\n\n"
 
         return StreamingResponse(
@@ -475,11 +480,16 @@ async def process_image(
             return_tensors="pt"
         ).to("cuda")
 
-        # Generar respuesta con parámetros simples
+        # Generar respuesta con parámetros optimizados para respuestas más extensas
         outputs = model.generate(
             **inputs,
-            max_new_tokens=800,
-            do_sample=False
+            max_new_tokens=2048,  # Aumentado de 800 a 2048 para respuestas más largas
+            do_sample=True,       # Habilitar muestreo para mayor diversidad
+            temperature=0.7,      # Temperatura moderada para balance entre creatividad y coherencia
+            top_p=0.9,           # Nucleus sampling para mejor calidad
+            repetition_penalty=1.1,  # Penalizar repeticiones
+            length_penalty=1.0,   # No penalizar respuestas largas
+            early_stopping=False  # Permitir que la respuesta se complete naturalmente
         )
 
         # Decodificar y limpiar respuesta
@@ -600,7 +610,7 @@ async def process_image_stream(
                 
                 logger.info(f"Total de imágenes a procesar: {len(all_images)}")
                 
-                for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=800):
+                for chunk in generate_stream_response_with_images(model, processor, formatted_prompt, all_images, request.prompt, max_new_tokens=1500):
                     yield chunk
             except Exception as e:
                 logger.error(f"Error en streaming de imagen: {str(e)}")
