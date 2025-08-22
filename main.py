@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 import firebase_admin
 from firebase_admin import auth, credentials
-from utils import get_system_prompt, clean_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
+from utils import get_system_prompt, get_medical_image_prompt, clean_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
