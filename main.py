@@ -12,6 +12,7 @@ import json
 import firebase_admin
 from firebase_admin import auth, credentials
 from utils import get_system_prompt, get_medical_image_prompt, clean_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
+from medical_classifier import is_medical_query
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -105,6 +106,15 @@ async def process_text(
     """Procesa texto usando MedGemma-4b-it"""
     try:
         logger.info(f"Procesando texto para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Validación previa: verificar si la consulta es médica
+        if not is_medical_query(request.prompt):
+            logger.info(f"Consulta no médica detectada: {request.prompt[:100]}...")
+            return ProcessResponse(
+                response="Soy un asistente médico especializado. Solo puedo responder a consultas médicas.",
+                tokens_used=0,
+                success=True
+            )
         
         # Construir mensajes con contexto si está disponible
         if request.context:
@@ -251,6 +261,23 @@ async def process_text_stream(
     """Procesa texto usando MedGemma-4b-it con streaming"""
     try:
         logger.info(f"Procesando texto en streaming para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Validación previa: verificar si la consulta es médica
+        if not is_medical_query(request.prompt):
+            logger.info(f"Consulta no médica detectada en streaming: {request.prompt[:100]}...")
+            
+            def generate_non_medical_response():
+                yield f"data: {json.dumps({'token': 'Soy un asistente médico especializado. Solo puedo responder a consultas médicas.', 'finished': True})}\n\n"
+            
+            return StreamingResponse(
+                generate_non_medical_response(),
+                media_type="text/plain",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Content-Type": "text/event-stream"
+                }
+            )
         print(f"DEBUG: Contexto recibido: {request.context[:200] if request.context else 'None'}...")
         print(f"DEBUG: Longitud del contexto: {len(request.context) if request.context else 0}")
         print(f"DEBUG: Contexto completo: {request.context}")
@@ -392,6 +419,15 @@ async def process_image(
     try:
         logger.info(f"Procesando imagen para usuario: {user_claims.get('uid', 'unknown')}")
         
+        # Validación previa: verificar si la consulta es médica
+        if not is_medical_query(request.prompt):
+            logger.info(f"Consulta no médica detectada en imagen: {request.prompt[:100]}...")
+            return ProcessResponse(
+                response="Soy un asistente médico especializado. Solo puedo responder a consultas médicas.",
+                tokens_used=0,
+                success=True
+            )
+        
         # Validar y decodificar data URI
         if not request.imageDataUri.startswith("data:image/"):
             raise HTTPException(status_code=400, detail="Formato de imagen inválido")
@@ -520,6 +556,23 @@ async def process_image_stream(
     """Procesa imagen usando MedGemma-4b-it con streaming"""
     try:
         logger.info(f"Procesando imagen en streaming para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Validación previa: verificar si la consulta es médica
+        if not is_medical_query(request.prompt):
+            logger.info(f"Consulta no médica detectada en imagen streaming: {request.prompt[:100]}...")
+            
+            def generate_non_medical_response():
+                yield f"data: {json.dumps({'token': 'Soy un asistente médico especializado. Solo puedo responder a consultas médicas.', 'finished': True})}\n\n"
+            
+            return StreamingResponse(
+                generate_non_medical_response(),
+                media_type="text/plain",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Content-Type": "text/event-stream"
+                }
+            )
         
         # Validar y decodificar data URI
         if not request.imageDataUri.startswith("data:image/"):
