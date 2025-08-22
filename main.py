@@ -118,7 +118,7 @@ async def process_text(
                 {
                     "role": "system",
                     "content": [
-                        {"type": "text", "text": get_system_prompt()}
+                        {"type": "text", "text": get_medical_image_prompt() if has_images else get_system_prompt()}
                     ]
                 }
             ]
@@ -267,7 +267,7 @@ async def process_text_stream(
                 {
                     "role": "system",
                     "content": [
-                        {"type": "text", "text": get_system_prompt()}
+                        {"type": "text", "text": get_medical_image_prompt() if has_images else get_system_prompt()}
                     ]
                 }
             ]
@@ -419,7 +419,7 @@ async def process_image(
                 {
                     "role": "system",
                     "content": [
-                        {"type": "text", "text": get_system_prompt()}
+                        {"type": "text", "text": get_medical_image_prompt()}
                     ]
                 }
             ]
@@ -548,7 +548,7 @@ async def process_image_stream(
                 {
                     "role": "system",
                     "content": [
-                        {"type": "text", "text": get_system_prompt()}
+                        {"type": "text", "text": get_medical_image_prompt()}
                     ]
                 }
             ]
@@ -571,7 +571,7 @@ async def process_image_stream(
                 {
                     "role": "system",
                     "content": [
-                        {"type": "text", "text": get_system_prompt()}
+                        {"type": "text", "text": get_medical_image_prompt()}
                     ]
                 },
                 {
