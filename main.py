@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 import firebase_admin
 from firebase_admin import auth, credentials
-from utils import get_system_prompt, get_medical_image_prompt, get_exam_report_prompt, clean_response, clean_json_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
+from utils import get_system_prompt, get_medical_image_prompt, get_exam_report_prompt, clean_response, clean_json_response, ExamReportOutputParser, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -719,71 +719,25 @@ async def generate_exam_report(
         # Contar tokens (aproximado)
         tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
         
-        # Intentar parsear la respuesta como JSON para validar que sea correcta
-        try:
-            # Log para debugging
-            logger.info(f"Respuesta del modelo (primeros 200 chars): {result[:200]}...")
-            
-            # Limpiar la respuesta para extraer JSON válido
-            json_str = clean_json_response(result)
-            
-            if json_str:
-                logger.info(f"JSON extraído: {json_str}")
-                
-                # Intentar parsear el JSON
-                report_data = json.loads(json_str)
-                
-                # Validar que tenga las claves requeridas
-                required_keys = ['summary', 'findings', 'disclaimer']
-                missing_keys = []
-                for key in required_keys:
-                    if key not in report_data:
-                        report_data[key] = "Información no disponible"
-                        missing_keys.append(key)
-                
-                if missing_keys:
-                    logger.warning(f"Claves faltantes en la respuesta: {missing_keys}")
-                
-                # Reconstruir el JSON válido
-                valid_json_response = json.dumps(report_data, ensure_ascii=False)
-                
-                logger.info(f"Reporte de examen generado exitosamente. Tokens usados: {tokens_used}")
-                
-                return ProcessResponse(
-                    response=valid_json_response,
-                    tokens_used=tokens_used,
-                    success=True
-                )
-            else:
-                # Si no se encuentra JSON válido, crear respuesta con disclaimer
-                logger.warning(f"No se encontró JSON válido en la respuesta. Respuesta completa: {result}")
-                fallback_response = {
-                    "summary": "No se pudo generar un análisis estructurado de la imagen.",
-                    "findings": "Se requiere revisión manual por un radiólogo certificado.",
-                    "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."
-                }
-                
-                return ProcessResponse(
-                    response=json.dumps(fallback_response, ensure_ascii=False),
-                    tokens_used=tokens_used,
-                    success=False
-                )
-                
-        except json.JSONDecodeError as e:
-            logger.error(f"Error parseando JSON de la respuesta: {str(e)}")
-            logger.error(f"Respuesta que causó el error: {result}")
-            # Si hay error en el parsing, crear respuesta con disclaimer
-            error_response = {
-                "summary": "Error en el procesamiento del análisis. Se requiere revisión manual.",
-                "findings": "No se pudo generar un reporte estructurado automáticamente.",
-                "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."
-            }
-            
-            return ProcessResponse(
-                response=json.dumps(error_response, ensure_ascii=False),
-                tokens_used=tokens_used,
-                success=False
-            )
+        # Usar OutputParser para procesar la respuesta
+        logger.info(f"Respuesta del modelo (primeros 200 chars): {result[:200]}...")
+        
+        parser = ExamReportOutputParser()
+        parsed_report = parser.parse(result)
+        
+        # Formatear para la API
+        formatted_response = parser.format_for_api(parsed_report)
+        
+        # Determinar si fue exitoso basado en si se pudo extraer información válida
+        success = all(key in parsed_report and parsed_report[key] for key in ['summary', 'findings', 'disclaimer'])
+        
+        logger.info(f"Reporte de examen procesado. Tokens usados: {tokens_used}, Éxito: {success}")
+        
+        return ProcessResponse(
+            response=formatted_response,
+            tokens_used=tokens_used,
+            success=success
+        )
 
     except HTTPException:
         raise

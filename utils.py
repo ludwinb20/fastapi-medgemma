@@ -103,55 +103,44 @@ def get_medical_image_prompt() -> str:
 
 def get_exam_report_prompt() -> str:
     return (
-        "Eres LucasMed, un radiólogo experto especializado en análisis de imágenes médicas. "
-        "Tu función es analizar imágenes médicas de diferentes tipos y generar reportes completos y profesionales.\n"
+        "Eres LucasMed, un radiólogo experto especializado en análisis de imágenes médicas.\n"
         "\n"
-        "⚠️ REGLA PRINCIPAL, ABSOLUTA Y PRIORITARIA ⚠️\n"
-        "SOLO puedes analizar imágenes médicas y generar reportes médicos. "
-        "Si la imagen NO es médica o no puede interpretarse, debes responder ÚNICAMENTE con la frase fija: "
-        "'Esta imagen no corresponde a un estudio médico válido o no puede ser interpretada adecuadamente.'\n"
-        "No intentes dar contexto adicional, explicaciones ni disculpas. "
-        "No reformules esta frase. No inventes otra variante. "
-        "Esta regla es PRIORITARIA sobre cualquier otra.\n"
+        "⚠️ REGLA PRINCIPAL ⚠️\n"
+        "Si la imagen NO es médica o no puede interpretarse, responde ÚNICAMENTE con esta frase exacta:\n"
+        "\"Esta imagen no corresponde a un estudio médico válido o no puede ser interpretada adecuadamente.\"\n"
+        "No agregues nada más en ese caso.\n"
         "\n"
-        "⚠️ FORMATO DE RESPUESTA OBLIGATORIO ⚠️\n"
-        "DEBES responder ÚNICAMENTE con un JSON válido. NO incluyas texto adicional, explicaciones, comentarios o cualquier otro contenido fuera del JSON.\n"
-        "\n"
-        "ESTRUCTURA JSON EXACTA REQUERIDA:\n"
+        "⚠️ FORMATO DE RESPUESTA OBLIGATORIO (solo para imágenes médicas válidas) ⚠️\n"
+        "Responde ÚNICAMENTE con un JSON válido y parseable. NO incluyas texto adicional, explicaciones, comentarios ni bloques de código.\n"
+        "El JSON debe contener exclusivamente los siguientes 3 campos, con valores obligatorios:\n"
         "{\n"
-        '  "summary": "Análisis detallado en lenguaje médico técnico y profesional del tipo de examen especificado",\n'
-        '  "findings": "Lista numerada y detallada de todos los hallazgos identificados, tanto normales como anormales",\n'
+        '  "summary": "Texto técnico y profesional en español que describa de forma completa el examen",\n'
+        '  "findings": ["Hallazgo 1 en español", "Hallazgo 2 en español", "Hallazgo 3 en español"],\n'
         '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
         "}\n"
         "\n"
-        "INSTRUCCIONES ESPECÍFICAS:\n"
-        "- Analiza la imagen médica del tipo especificado con precisión técnica.\n"
-        "- Proporciona un análisis detallado en lenguaje médico técnico y profesional.\n"
-        "- Identifica todos los hallazgos relevantes, tanto normales como anormales.\n"
-        "- Utiliza terminología médica estándar y criterios radiológicos reconocidos.\n"
-        "- El campo 'summary' debe contener un análisis completo y estructurado.\n"
-        "- El campo 'findings' debe listar todos los hallazgos de forma clara y numerada.\n"
-        "- El campo 'disclaimer' debe ser exactamente el texto especificado.\n"
-        "\n"
-        "REGLAS CRÍTICAS:\n"
+        "⚠️ REGLAS CRÍTICAS ⚠️\n"
         "- Responde SIEMPRE en español.\n"
-        "- Utiliza lenguaje médico técnico y profesional.\n"
-        "- Sé preciso, completo y objetivo en tu análisis.\n"
-        "- Incluye hallazgos normales y anormales relevantes.\n"
-        "- Menciona limitaciones diagnósticas si las hay.\n"
-        "- Sugiere estudios adicionales cuando sea apropiado.\n"
-        "- NO incluyas texto adicional fuera del JSON.\n"
-        "- NO agregues comentarios, explicaciones ni texto fuera del formato JSON especificado.\n"
-        "- NO uses bloques de código markdown (```json o ```).\n"
-        "- NO uses comillas simples, solo comillas dobles en el JSON.\n"
-        "- NO incluyas saltos de línea dentro de los valores del JSON.\n"
-        "- Asegúrate de que el JSON sea sintácticamente válido.\n"
-        "- Responde DIRECTAMENTE con el JSON, sin envolverlo en ningún formato adicional.\n"
+        "- No inventes claves adicionales ni cambies los nombres existentes.\n"
+        "- El campo 'summary' debe ser un string.\n"
+        "- El campo 'findings' debe ser un array de strings, cada hallazgo como un string independiente.\n"
+        "- El campo 'disclaimer' debe contener exactamente el texto provisto, sin cambios.\n"
+        "- No uses valores null, listas anidadas ni otros tipos de datos.\n"
+        "- No uses bloques de código markdown (```json o ```).\n"
+        "- No agregues explicaciones ni texto fuera del JSON.\n"
+        "- Valida internamente que el JSON sea correcto antes de responder.\n"
+        "- Si hay limitaciones diagnósticas, inclúyelas dentro del campo 'summary' o en un hallazgo dentro de 'findings'.\n"
         "\n"
-        "EJEMPLO DE RESPUESTA CORRECTA:\n"
+        "⚠️ EJEMPLO DE RESPUESTA CORRECTA ⚠️\n"
         "{\n"
-        '  "summary": "La radiografía de tórax muestra una imagen de buena calidad técnica con adecuada penetración y centrado. Se observa la silueta cardíaca de tamaño normal y los campos pulmonares sin evidencia de infiltrados o derrame pleural.",\n'
-        '  "findings": "1. Silueta cardíaca de tamaño normal. 2. Campos pulmonares sin infiltrados. 3. No hay evidencia de derrame pleural. 4. Costillas y estructuras óseas sin alteraciones aparentes. 5. Diafragma en posición normal.",\n'
+        '  "summary": "La radiografía de tórax muestra adecuada calidad técnica, con silueta cardíaca de tamaño normal y campos pulmonares claros.",\n'
+        '  "findings": [\n'
+        '    "Silueta cardíaca de tamaño normal",\n'
+        '    "Campos pulmonares sin evidencia de infiltrados",\n'
+        '    "No se observa derrame pleural",\n'
+        '    "Estructuras óseas sin alteraciones aparentes",\n'
+        '    "Diafragma en posición normal"\n'
+        '  ],\n'
         '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
         "}\n"
     )
@@ -184,6 +173,76 @@ def clean_json_response(response: str) -> str:
         return json_str.strip()
     
     return response_clean.strip()
+
+class ExamReportOutputParser:
+    """Parser para extraer y validar reportes de examen médico del modelo"""
+    
+    def __init__(self):
+        self.required_keys = ['summary', 'findings', 'disclaimer']
+        self.default_disclaimer = "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."
+    
+    def parse(self, response: str) -> dict:
+        """
+        Parsea la respuesta del modelo y extrae el reporte de examen
+        
+        Args:
+            response: Respuesta del modelo
+            
+        Returns:
+            dict: Reporte parseado con las claves requeridas
+        """
+        try:
+            # Limpiar la respuesta
+            json_str = clean_json_response(response)
+            
+            if not json_str:
+                return self._create_fallback_response("No se encontró JSON válido en la respuesta")
+            
+            # Parsear JSON
+            report_data = json.loads(json_str)
+            
+            # Validar y completar claves requeridas
+            validated_data = self._validate_and_complete(report_data)
+            
+            return validated_data
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parseando JSON: {str(e)}")
+            return self._create_fallback_response(f"Error en el formato JSON: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error inesperado en el parser: {str(e)}")
+            return self._create_fallback_response(f"Error inesperado: {str(e)}")
+    
+    def _validate_and_complete(self, data: dict) -> dict:
+        """Valida y completa las claves requeridas en el reporte"""
+        validated = {}
+        
+        # Validar cada clave requerida
+        for key in self.required_keys:
+            if key in data and data[key]:
+                validated[key] = str(data[key]).strip()
+            else:
+                # Proporcionar valores por defecto
+                if key == 'summary':
+                    validated[key] = "No se pudo generar un análisis estructurado de la imagen."
+                elif key == 'findings':
+                    validated[key] = "Se requiere revisión manual por un radiólogo certificado."
+                elif key == 'disclaimer':
+                    validated[key] = self.default_disclaimer
+        
+        return validated
+    
+    def _create_fallback_response(self, error_message: str) -> dict:
+        """Crea una respuesta de fallback cuando hay errores"""
+        return {
+            'summary': f"Error en el procesamiento: {error_message}",
+            'findings': "Se requiere revisión manual por un radiólogo certificado.",
+            'disclaimer': self.default_disclaimer
+        }
+    
+    def format_for_api(self, parsed_data: dict) -> str:
+        """Formatea los datos parseados para la respuesta de la API"""
+        return json.dumps(parsed_data, ensure_ascii=False)
 
 def clean_response(full_response, prompt):
     """Limpia la respuesta removiendo el prompt original y repeticiones"""
