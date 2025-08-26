@@ -165,12 +165,34 @@ def clean_json_response(response: str) -> str:
     if response_clean.endswith('```'):
         response_clean = response_clean[:-3]
     
-    # Buscar el JSON válido
-    start_idx = response_clean.find('{')
-    end_idx = response_clean.rfind('}') + 1
+    # Buscar el último JSON válido (el más reciente, que debería ser la respuesta del modelo)
+    # Buscar todos los pares de { y } para encontrar el JSON más completo
+    import re
     
-    if start_idx != -1 and end_idx > start_idx:
+    # Encontrar todos los pares de llaves
+    brace_pairs = []
+    stack = []
+    for i, char in enumerate(response_clean):
+        if char == '{':
+            stack.append(i)
+        elif char == '}':
+            if stack:
+                start = stack.pop()
+                brace_pairs.append((start, i + 1))
+    
+    # Si no hay pares de llaves, buscar el primer JSON simple
+    if not brace_pairs:
+        start_idx = response_clean.find('{')
+        end_idx = response_clean.rfind('}') + 1
+        if start_idx != -1 and end_idx > start_idx:
+            json_str = response_clean[start_idx:end_idx]
+        else:
+            return response_clean.strip()
+    else:
+        # Tomar el último par de llaves (el más reciente)
+        start_idx, end_idx = brace_pairs[-1]
         json_str = response_clean[start_idx:end_idx]
+        logger.info(f"Seleccionado JSON #{len(brace_pairs)} (último) de {len(brace_pairs)} encontrados")
         
         # Verificar si el JSON está completo
         if not json_str.strip().endswith('}'):
@@ -259,6 +281,14 @@ class ExamReportOutputParser:
             try:
                 # Buscar patrones básicos en el JSON malformado
                 import re
+                
+                # Buscar el último JSON en la respuesta completa
+                all_jsons = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response)
+                if all_jsons:
+                    # Tomar el último JSON encontrado
+                    last_json = all_jsons[-1]
+                    logger.info(f"Extrayendo del último JSON encontrado: {last_json[:200]}...")
+                    json_str = last_json
                 
                 # Extraer summary si existe (más robusto)
                 summary_match = re.search(r'"summary":\s*"([^"]*)"', json_str)
