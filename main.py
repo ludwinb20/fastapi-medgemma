@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 import firebase_admin
 from firebase_admin import auth, credentials
-from utils import get_system_prompt, get_medical_image_prompt, clean_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
+from utils import get_system_prompt, get_medical_image_prompt, get_exam_report_prompt, clean_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -68,12 +68,17 @@ class ImageProcessRequest(BaseModel):
     prompt: str
     context: Optional[str] = None
 
+class ExamReportRequest(BaseModel):
+    imageDataUri: str
+    examType: str
 
 
 class ProcessResponse(BaseModel):
     response: str
     tokens_used: int
     success: bool
+
+
 
 # Cargar el modelo (con manejo de errores)
 try:
@@ -630,6 +635,153 @@ async def process_image_stream(
         raise
     except Exception as e:
         logger.error(f"Error procesando imagen en streaming: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@app.post("/exam-report", response_model=ProcessResponse)
+async def generate_exam_report(
+    request: ExamReportRequest,
+    user_claims: dict = Depends(verify_api_key)
+):
+    """Genera un reporte completo de examen médico basado en una imagen"""
+    try:
+        logger.info(f"Generando reporte de examen para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Validar y decodificar data URI
+        if not request.imageDataUri.startswith("data:image/"):
+            raise HTTPException(status_code=400, detail="Formato de imagen inválido")
+        
+        try:
+            # Extraer la parte base64
+            header, encoded = request.imageDataUri.split(",", 1)
+            image_data = BytesIO(encoded.encode('utf-8'))
+            
+            # Decodificar base64
+            import base64
+            image_bytes = base64.b64decode(encoded)
+            image = Image.open(BytesIO(image_bytes))
+            
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+                
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Error decodificando imagen")
+
+        # Construir el prompt específico para el tipo de examen
+        exam_prompt = f"Analiza esta imagen médica de tipo '{request.examType}' y proporciona un reporte completo."
+        
+        # Construir mensajes con el prompt del sistema para reportes de examen
+        messages = [
+            {
+                "role": "system",
+                "content": [
+                    {"type": "text", "text": get_exam_report_prompt()}
+                ]
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": exam_prompt},
+                    {"type": "image", "image": image}
+                ]
+            }
+        ]
+
+        # Aplicar template de chat
+        formatted_prompt = processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+
+        # Procesar con el modelo
+        inputs = processor(
+            text=formatted_prompt,
+            images=[image],
+            return_tensors="pt"
+        ).to("cuda")
+
+        # Generar respuesta con parámetros optimizados para reportes detallados
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=2048,  # Aumentado para reportes más detallados
+            do_sample=True,       # Habilitar muestreo para mayor diversidad
+            temperature=0.7,      # Temperatura moderada para balance entre creatividad y coherencia
+            top_p=0.9,           # Nucleus sampling para mejor calidad
+            repetition_penalty=1.1,  # Penalizar repeticiones
+            length_penalty=1.0,   # No penalizar respuestas largas
+            early_stopping=False  # Permitir que la respuesta se complete naturalmente
+        )
+
+        # Decodificar y limpiar respuesta
+        result = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+        result = clean_response(result, formatted_prompt)
+        
+        # Contar tokens (aproximado)
+        tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
+        
+        # Intentar parsear la respuesta como JSON para validar que sea correcta
+        try:
+            # Limpiar la respuesta para extraer solo el JSON
+            result_clean = result.strip()
+            
+            # Buscar el inicio y fin del JSON
+            start_idx = result_clean.find('{')
+            end_idx = result_clean.rfind('}') + 1
+            
+            if start_idx != -1 and end_idx > start_idx:
+                json_str = result_clean[start_idx:end_idx]
+                report_data = json.loads(json_str)
+                
+                # Validar que tenga las claves requeridas
+                required_keys = ['summary', 'findings', 'disclaimer']
+                for key in required_keys:
+                    if key not in report_data:
+                        report_data[key] = "Información no disponible"
+                
+                # Reconstruir el JSON válido
+                valid_json_response = json.dumps(report_data, ensure_ascii=False)
+                
+                logger.info(f"Reporte de examen generado exitosamente. Tokens usados: {tokens_used}")
+                
+                return ProcessResponse(
+                    response=valid_json_response,
+                    tokens_used=tokens_used,
+                    success=True
+                )
+            else:
+                # Si no se encuentra JSON válido, crear respuesta con disclaimer
+                logger.warning("No se pudo parsear JSON de la respuesta del modelo")
+                fallback_response = {
+                    "summary": "No se pudo generar un análisis estructurado de la imagen.",
+                    "findings": "Se requiere revisión manual por un radiólogo certificado.",
+                    "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."
+                }
+                
+                return ProcessResponse(
+                    response=json.dumps(fallback_response, ensure_ascii=False),
+                    tokens_used=tokens_used,
+                    success=False
+                )
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parseando JSON de la respuesta: {str(e)}")
+            # Si hay error en el parsing, crear respuesta con disclaimer
+            error_response = {
+                "summary": "Error en el procesamiento del análisis. Se requiere revisión manual.",
+                "findings": "No se pudo generar un reporte estructurado automáticamente.",
+                "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."
+            }
+            
+            return ProcessResponse(
+                response=json.dumps(error_response, ensure_ascii=False),
+                tokens_used=tokens_used,
+                success=False
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generando reporte de examen: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 
