@@ -112,24 +112,23 @@ def get_exam_report_prompt() -> str:
         "\n"
         "⚠️ FORMATO DE RESPUESTA OBLIGATORIO (solo para imágenes médicas válidas) ⚠️\n"
         "Responde ÚNICAMENTE con un JSON válido y parseable. NO incluyas texto adicional, explicaciones, comentarios ni bloques de código.\n"
-        "El JSON debe contener exclusivamente los siguientes 3 campos, con valores obligatorios:\n"
+        "El JSON debe contener exclusivamente los siguientes 2 campos:\n"
         "{\n"
         '  "summary": "Texto técnico y profesional en español que describa de forma completa el examen",\n'
-        '  "findings": ["Hallazgo 1 en español", "Hallazgo 2 en español", "Hallazgo 3 en español"],\n'
-        '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
+        '  "findings": ["Hallazgo 1 en español", "Hallazgo 2 en español", "Hallazgo 3 en español"]\n'
         "}\n"
         "\n"
         "⚠️ REGLAS CRÍTICAS ⚠️\n"
         "- Responde SIEMPRE en español.\n"
         "- No inventes claves adicionales ni cambies los nombres existentes.\n"
-        "- El campo 'summary' debe ser un string.\n"
+        "- El campo 'summary' debe ser un string con análisis completo del examen.\n"
         "- El campo 'findings' debe ser un array de strings, cada hallazgo como un string independiente.\n"
-        "- El campo 'disclaimer' debe contener exactamente el texto provisto, sin cambios.\n"
         "- No uses valores null, listas anidadas ni otros tipos de datos.\n"
         "- No uses bloques de código markdown (```json o ```).\n"
         "- No agregues explicaciones ni texto fuera del JSON.\n"
         "- Valida internamente que el JSON sea correcto antes de responder.\n"
         "- Si hay limitaciones diagnósticas, inclúyelas dentro del campo 'summary' o en un hallazgo dentro de 'findings'.\n"
+        "- NO incluyas el campo 'disclaimer' - se agregará automáticamente.\n"
         "\n"
         "⚠️ EJEMPLO DE RESPUESTA CORRECTA ⚠️\n"
         "{\n"
@@ -140,8 +139,7 @@ def get_exam_report_prompt() -> str:
         '    "No se observa derrame pleural",\n'
         '    "Estructuras óseas sin alteraciones aparentes",\n'
         '    "Diafragma en posición normal"\n'
-        '  ],\n'
-        '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
+        '  ]\n'
         "}\n"
     )
 
@@ -178,8 +176,8 @@ class ExamReportOutputParser:
     """Parser para extraer y validar reportes de examen médico del modelo"""
     
     def __init__(self):
-        self.required_keys = ['summary', 'findings', 'disclaimer']
-        self.default_disclaimer = "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."
+        self.required_keys = ['summary', 'findings']
+        self.disclaimer = "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."
     
     def parse(self, response: str) -> dict:
         """
@@ -189,7 +187,7 @@ class ExamReportOutputParser:
             response: Respuesta del modelo
             
         Returns:
-            dict: Reporte parseado con las claves requeridas
+            dict: Reporte parseado con las claves requeridas + disclaimer
         """
         try:
             # Limpiar la respuesta
@@ -204,6 +202,9 @@ class ExamReportOutputParser:
             # Validar y completar claves requeridas
             validated_data = self._validate_and_complete(report_data)
             
+            # Agregar disclaimer automáticamente
+            validated_data['disclaimer'] = self.disclaimer
+            
             return validated_data
             
         except json.JSONDecodeError as e:
@@ -217,18 +218,25 @@ class ExamReportOutputParser:
         """Valida y completa las claves requeridas en el reporte"""
         validated = {}
         
-        # Validar cada clave requerida
-        for key in self.required_keys:
-            if key in data and data[key]:
-                validated[key] = str(data[key]).strip()
+        # Validar summary
+        if 'summary' in data and data['summary']:
+            validated['summary'] = str(data['summary']).strip()
+        else:
+            validated['summary'] = "No se pudo generar un análisis estructurado de la imagen."
+        
+        # Validar findings (puede ser array o string)
+        if 'findings' in data and data['findings']:
+            findings = data['findings']
+            if isinstance(findings, list):
+                # Si es una lista, validar que todos los elementos sean strings
+                validated['findings'] = [str(item).strip() for item in findings if item]
+            elif isinstance(findings, str):
+                # Si es string, intentar convertirlo a lista o mantener como string
+                validated['findings'] = findings.strip()
             else:
-                # Proporcionar valores por defecto
-                if key == 'summary':
-                    validated[key] = "No se pudo generar un análisis estructurado de la imagen."
-                elif key == 'findings':
-                    validated[key] = "Se requiere revisión manual por un radiólogo certificado."
-                elif key == 'disclaimer':
-                    validated[key] = self.default_disclaimer
+                validated['findings'] = "Se requiere revisión manual por un radiólogo certificado."
+        else:
+            validated['findings'] = "Se requiere revisión manual por un radiólogo certificado."
         
         return validated
     
@@ -237,7 +245,7 @@ class ExamReportOutputParser:
         return {
             'summary': f"Error en el procesamiento: {error_message}",
             'findings': "Se requiere revisión manual por un radiólogo certificado.",
-            'disclaimer': self.default_disclaimer
+            'disclaimer': self.disclaimer
         }
     
     def format_for_api(self, parsed_data: dict) -> str:

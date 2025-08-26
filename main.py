@@ -729,7 +729,7 @@ async def generate_exam_report(
         formatted_response = parser.format_for_api(parsed_report)
         
         # Determinar si fue exitoso basado en si se pudo extraer información válida
-        success = all(key in parsed_report and parsed_report[key] for key in ['summary', 'findings', 'disclaimer'])
+        success = all(key in parsed_report and parsed_report[key] for key in ['summary', 'findings'])
         
         logger.info(f"Reporte de examen procesado. Tokens usados: {tokens_used}, Éxito: {success}")
         
