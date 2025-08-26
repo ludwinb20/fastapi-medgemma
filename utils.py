@@ -142,9 +142,11 @@ def get_exam_report_prompt() -> str:
         "- Sugiere estudios adicionales cuando sea apropiado.\n"
         "- NO incluyas texto adicional fuera del JSON.\n"
         "- NO agregues comentarios, explicaciones ni texto fuera del formato JSON especificado.\n"
+        "- NO uses bloques de código markdown (```json o ```).\n"
         "- NO uses comillas simples, solo comillas dobles en el JSON.\n"
         "- NO incluyas saltos de línea dentro de los valores del JSON.\n"
         "- Asegúrate de que el JSON sea sintácticamente válido.\n"
+        "- Responde DIRECTAMENTE con el JSON, sin envolverlo en ningún formato adicional.\n"
         "\n"
         "EJEMPLO DE RESPUESTA CORRECTA:\n"
         "{\n"
@@ -153,6 +155,35 @@ def get_exam_report_prompt() -> str:
         '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
         "}\n"
     )
+
+def clean_json_response(response: str) -> str:
+    """Limpia una respuesta para extraer JSON válido, manejando diferentes formatos"""
+    if not response:
+        return ""
+    
+    response_clean = response.strip()
+    
+    # Remover bloques de código markdown
+    if response_clean.startswith('```json'):
+        # Remover ```json al inicio
+        response_clean = response_clean[7:]
+    elif response_clean.startswith('```'):
+        # Remover ``` al inicio
+        response_clean = response_clean[3:]
+    
+    # Remover ``` al final si existe
+    if response_clean.endswith('```'):
+        response_clean = response_clean[:-3]
+    
+    # Buscar el JSON válido
+    start_idx = response_clean.find('{')
+    end_idx = response_clean.rfind('}') + 1
+    
+    if start_idx != -1 and end_idx > start_idx:
+        json_str = response_clean[start_idx:end_idx]
+        return json_str.strip()
+    
+    return response_clean.strip()
 
 def clean_response(full_response, prompt):
     """Limpia la respuesta removiendo el prompt original y repeticiones"""

@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 import firebase_admin
 from firebase_admin import auth, credentials
-from utils import get_system_prompt, get_medical_image_prompt, get_exam_report_prompt, clean_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
+from utils import get_system_prompt, get_medical_image_prompt, get_exam_report_prompt, clean_response, clean_json_response, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -721,18 +721,13 @@ async def generate_exam_report(
         
         # Intentar parsear la respuesta como JSON para validar que sea correcta
         try:
-            # Limpiar la respuesta para extraer solo el JSON
-            result_clean = result.strip()
-            
             # Log para debugging
-            logger.info(f"Respuesta del modelo (primeros 200 chars): {result_clean[:200]}...")
+            logger.info(f"Respuesta del modelo (primeros 200 chars): {result[:200]}...")
             
-            # Buscar el inicio y fin del JSON
-            start_idx = result_clean.find('{')
-            end_idx = result_clean.rfind('}') + 1
+            # Limpiar la respuesta para extraer JSON válido
+            json_str = clean_json_response(result)
             
-            if start_idx != -1 and end_idx > start_idx:
-                json_str = result_clean[start_idx:end_idx]
+            if json_str:
                 logger.info(f"JSON extraído: {json_str}")
                 
                 # Intentar parsear el JSON
@@ -761,7 +756,7 @@ async def generate_exam_report(
                 )
             else:
                 # Si no se encuentra JSON válido, crear respuesta con disclaimer
-                logger.warning(f"No se encontró JSON válido en la respuesta. Respuesta completa: {result_clean}")
+                logger.warning(f"No se encontró JSON válido en la respuesta. Respuesta completa: {result}")
                 fallback_response = {
                     "summary": "No se pudo generar un análisis estructurado de la imagen.",
                     "findings": "Se requiere revisión manual por un radiólogo certificado.",
@@ -776,7 +771,7 @@ async def generate_exam_report(
                 
         except json.JSONDecodeError as e:
             logger.error(f"Error parseando JSON de la respuesta: {str(e)}")
-            logger.error(f"Respuesta que causó el error: {result_clean}")
+            logger.error(f"Respuesta que causó el error: {result}")
             # Si hay error en el parsing, crear respuesta con disclaimer
             error_response = {
                 "summary": "Error en el procesamiento del análisis. Se requiere revisión manual.",
