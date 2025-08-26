@@ -637,7 +637,7 @@ async def process_image_stream(
         logger.error(f"Error procesando imagen en streaming: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-@app.post("/exam-report", response_model=ProcessResponse)
+@app.post("/api/exam-report", response_model=ProcessResponse)
 async def generate_exam_report(
     request: ExamReportRequest,
     user_claims: dict = Depends(verify_api_key)
