@@ -714,13 +714,16 @@ async def generate_exam_report(
 
         # Decodificar y limpiar respuesta
         result = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+        print("--------------------------------")
+        print(f"DEBUG: Resultado del modelo: {result}")
+        print("--------------------------------")
         result = clean_response(result, formatted_prompt)
-        
+        print("_________________________________")
+        print(f"DEBUG: Resultado limpio: {result}")
+        print("_________________________________")
         # Contar tokens (aproximado)
         tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
         
-        # Usar OutputParser para procesar la respuesta
-        logger.info(f"Respuesta del modelo (longitud: {len(result)}): {result}...")
         
         # Verificar si la respuesta es muy larga
         if len(result) > 2000:
