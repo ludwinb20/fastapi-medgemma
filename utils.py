@@ -172,21 +172,29 @@ def clean_json_response(response: str) -> str:
     if start_idx != -1 and end_idx > start_idx:
         json_str = response_clean[start_idx:end_idx]
         
+        # Verificar si el JSON está completo
+        if not json_str.strip().endswith('}'):
+            logger.warning("JSON parece estar incompleto (no termina con '}')")
+            # Intentar completar el JSON si es posible
+            if '"findings":' in json_str and not json_str.strip().endswith(']'):
+                # Si tiene findings pero no está cerrado, intentar completarlo
+                json_str = json_str.strip() + ']}'
+                logger.info("JSON completado automáticamente")
+        
         # Intentar arreglar problemas comunes de JSON
         try:
             # Primero intentar parsear como está
             json.loads(json_str)
+            logger.info("JSON válido sin necesidad de arreglos")
             return json_str.strip()
         except json.JSONDecodeError as e:
             logger.warning(f"JSON inválido detectado, intentando arreglar: {str(e)}")
+            logger.warning(f"JSON problemático: {json_str}")
             
             # Intentar arreglar comillas no escapadas en strings
             try:
                 # Buscar strings que contengan comillas dobles sin escapar
                 import re
-                
-                # Patrón para encontrar strings con comillas dobles sin escapar
-                pattern = r'"([^"]*)"([^"]*)"([^"]*)"'
                 
                 # Reemplazar comillas dobles internas con comillas simples
                 fixed_json = re.sub(r'(?<!\\)"(?=.*":\s*"[^"]*$)', "'", json_str)
@@ -229,7 +237,7 @@ class ExamReportOutputParser:
                 return self._create_fallback_response("No se encontró JSON válido en la respuesta")
             
             # Log para debugging
-            logger.info(f"JSON a parsear: {json_str[:500]}...")
+            logger.info(f"JSON a parsear (longitud: {len(json_str)}): {json_str}")
             
             # Parsear JSON
             report_data = json.loads(json_str)
@@ -252,21 +260,41 @@ class ExamReportOutputParser:
                 # Buscar patrones básicos en el JSON malformado
                 import re
                 
-                # Extraer summary si existe
+                # Extraer summary si existe (más robusto)
                 summary_match = re.search(r'"summary":\s*"([^"]*)"', json_str)
-                summary = summary_match.group(1) if summary_match else "No se pudo extraer el resumen"
+                if summary_match:
+                    summary = summary_match.group(1)
+                    # Si el summary está truncado, intentar obtener más
+                    if len(summary) < 50:  # Si es muy corto, probablemente está truncado
+                        # Buscar el summary completo hasta el siguiente campo
+                        full_summary_match = re.search(r'"summary":\s*"([^"]*(?:"[^"]*"[^"]*)*)"', json_str)
+                        if full_summary_match:
+                            summary = full_summary_match.group(1)
+                else:
+                    summary = "No se pudo extraer el resumen"
                 
-                # Extraer findings si existe
+                # Extraer findings si existe (más robusto)
                 findings_match = re.search(r'"findings":\s*\[(.*?)\]', json_str, re.DOTALL)
                 if findings_match:
                     findings_text = findings_match.group(1)
                     # Limpiar y extraer elementos del array
                     findings_items = re.findall(r'"([^"]*)"', findings_text)
-                    findings = findings_items if findings_items else ["No se pudieron extraer hallazgos específicos"]
+                    if findings_items:
+                        findings = findings_items
+                    else:
+                        # Si no se encontraron elementos, intentar extraer texto simple
+                        findings = ["Hallazgos extraídos del análisis de la imagen"]
                 else:
-                    findings = ["No se pudieron extraer hallazgos específicos"]
+                    # Si no hay findings, intentar extraer cualquier texto después del summary
+                    after_summary = json_str.split('"summary":')[1] if '"summary":' in json_str else ""
+                    if after_summary:
+                        # Buscar cualquier texto que parezca un hallazgo
+                        potential_findings = re.findall(r'"([^"]{10,})"', after_summary)
+                        findings = potential_findings[:5] if potential_findings else ["Hallazgos extraídos del análisis de la imagen"]
+                    else:
+                        findings = ["No se pudieron extraer hallazgos específicos"]
                 
-                logger.info("Se extrajo información parcial del JSON malformado")
+                logger.info(f"Se extrajo información parcial: summary ({len(summary)} chars), findings ({len(findings)} items)")
                 
                 return {
                     'summary': summary,

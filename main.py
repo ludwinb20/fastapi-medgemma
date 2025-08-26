@@ -720,7 +720,11 @@ async def generate_exam_report(
         tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
         
         # Usar OutputParser para procesar la respuesta
-        logger.info(f"Respuesta del modelo (primeros 200 chars): {result[:200]}...")
+        logger.info(f"Respuesta del modelo (longitud: {len(result)}): {result}...")
+        
+        # Verificar si la respuesta es muy larga
+        if len(result) > 2000:
+            logger.warning(f"Respuesta muy larga ({len(result)} chars), puede estar truncada")
         
         parser = ExamReportOutputParser()
         parsed_report = parser.parse(result)
