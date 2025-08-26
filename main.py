@@ -724,19 +724,30 @@ async def generate_exam_report(
             # Limpiar la respuesta para extraer solo el JSON
             result_clean = result.strip()
             
+            # Log para debugging
+            logger.info(f"Respuesta del modelo (primeros 200 chars): {result_clean[:200]}...")
+            
             # Buscar el inicio y fin del JSON
             start_idx = result_clean.find('{')
             end_idx = result_clean.rfind('}') + 1
             
             if start_idx != -1 and end_idx > start_idx:
                 json_str = result_clean[start_idx:end_idx]
+                logger.info(f"JSON extraído: {json_str}")
+                
+                # Intentar parsear el JSON
                 report_data = json.loads(json_str)
                 
                 # Validar que tenga las claves requeridas
                 required_keys = ['summary', 'findings', 'disclaimer']
+                missing_keys = []
                 for key in required_keys:
                     if key not in report_data:
                         report_data[key] = "Información no disponible"
+                        missing_keys.append(key)
+                
+                if missing_keys:
+                    logger.warning(f"Claves faltantes en la respuesta: {missing_keys}")
                 
                 # Reconstruir el JSON válido
                 valid_json_response = json.dumps(report_data, ensure_ascii=False)
@@ -750,7 +761,7 @@ async def generate_exam_report(
                 )
             else:
                 # Si no se encuentra JSON válido, crear respuesta con disclaimer
-                logger.warning("No se pudo parsear JSON de la respuesta del modelo")
+                logger.warning(f"No se encontró JSON válido en la respuesta. Respuesta completa: {result_clean}")
                 fallback_response = {
                     "summary": "No se pudo generar un análisis estructurado de la imagen.",
                     "findings": "Se requiere revisión manual por un radiólogo certificado.",
@@ -765,6 +776,7 @@ async def generate_exam_report(
                 
         except json.JSONDecodeError as e:
             logger.error(f"Error parseando JSON de la respuesta: {str(e)}")
+            logger.error(f"Respuesta que causó el error: {result_clean}")
             # Si hay error en el parsing, crear respuesta con disclaimer
             error_response = {
                 "summary": "Error en el procesamiento del análisis. Se requiere revisión manual.",

@@ -114,22 +114,26 @@ def get_exam_report_prompt() -> str:
         "No reformules esta frase. No inventes otra variante. "
         "Esta regla es PRIORITARIA sobre cualquier otra.\n"
         "\n"
-        "INSTRUCCIONES ESPECÍFICAS PARA REPORTES DE EXAMEN:\n"
+        "⚠️ FORMATO DE RESPUESTA OBLIGATORIO ⚠️\n"
+        "DEBES responder ÚNICAMENTE con un JSON válido. NO incluyas texto adicional, explicaciones, comentarios o cualquier otro contenido fuera del JSON.\n"
+        "\n"
+        "ESTRUCTURA JSON EXACTA REQUERIDA:\n"
+        "{\n"
+        '  "summary": "Análisis detallado en lenguaje médico técnico y profesional del tipo de examen especificado",\n'
+        '  "findings": "Lista numerada y detallada de todos los hallazgos identificados, tanto normales como anormales",\n'
+        '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
+        "}\n"
+        "\n"
+        "INSTRUCCIONES ESPECÍFICAS:\n"
         "- Analiza la imagen médica del tipo especificado con precisión técnica.\n"
         "- Proporciona un análisis detallado en lenguaje médico técnico y profesional.\n"
         "- Identifica todos los hallazgos relevantes, tanto normales como anormales.\n"
         "- Utiliza terminología médica estándar y criterios radiológicos reconocidos.\n"
-        "- Estructura tu respuesta en formato JSON con las claves: summary, findings, disclaimer.\n"
+        "- El campo 'summary' debe contener un análisis completo y estructurado.\n"
+        "- El campo 'findings' debe listar todos los hallazgos de forma clara y numerada.\n"
+        "- El campo 'disclaimer' debe ser exactamente el texto especificado.\n"
         "\n"
-        "FORMATO DE RESPUESTA REQUERIDO:\n"
-        "Debes responder ÚNICAMENTE en formato JSON válido con la siguiente estructura:\n"
-        "{\n"
-        '  "summary": "Análisis detallado en lenguaje médico técnico y profesional",\n'
-        '  "findings": "Lista clara y detallada de todos los hallazgos potenciales",\n'
-        '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
-        "}\n"
-        "\n"
-        "REGLAS ADICIONALES:\n"
+        "REGLAS CRÍTICAS:\n"
         "- Responde SIEMPRE en español.\n"
         "- Utiliza lenguaje médico técnico y profesional.\n"
         "- Sé preciso, completo y objetivo en tu análisis.\n"
@@ -138,6 +142,16 @@ def get_exam_report_prompt() -> str:
         "- Sugiere estudios adicionales cuando sea apropiado.\n"
         "- NO incluyas texto adicional fuera del JSON.\n"
         "- NO agregues comentarios, explicaciones ni texto fuera del formato JSON especificado.\n"
+        "- NO uses comillas simples, solo comillas dobles en el JSON.\n"
+        "- NO incluyas saltos de línea dentro de los valores del JSON.\n"
+        "- Asegúrate de que el JSON sea sintácticamente válido.\n"
+        "\n"
+        "EJEMPLO DE RESPUESTA CORRECTA:\n"
+        "{\n"
+        '  "summary": "La radiografía de tórax muestra una imagen de buena calidad técnica con adecuada penetración y centrado. Se observa la silueta cardíaca de tamaño normal y los campos pulmonares sin evidencia de infiltrados o derrame pleural.",\n'
+        '  "findings": "1. Silueta cardíaca de tamaño normal. 2. Campos pulmonares sin infiltrados. 3. No hay evidencia de derrame pleural. 4. Costillas y estructuras óseas sin alteraciones aparentes. 5. Diafragma en posición normal.",\n'
+        '  "disclaimer": "Importante: Este es un análisis preliminar generado por IA y no debe considerarse un diagnóstico médico definitivo. La interpretación de imágenes médicas es compleja y debe ser realizada por un radiólogo certificado. Consulte a un profesional de la salud para una evaluación completa y un diagnóstico preciso."\n'
+        "}\n"
     )
 
 def clean_response(full_response, prompt):
