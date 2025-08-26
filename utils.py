@@ -202,7 +202,7 @@ def is_trivial_question(text: str) -> bool:
         return True
     return False
 
-def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=1200):
+def generate_stream_response(model, processor, formatted_prompt, user_input=None, max_new_tokens=1100):
     """Genera respuesta en streaming real usando TextIteratorStreamer"""
     logger.info(f"Iniciando generación con max_new_tokens={max_new_tokens}")
     
@@ -268,7 +268,7 @@ def generate_stream_response(model, processor, formatted_prompt, user_input=None
     # Señalizar fin
     yield f"data: {json.dumps({'token': '', 'finished': True})}\n\n"
 
-def generate_stream_response_with_images(model, processor, formatted_prompt, images, user_input=None, max_new_tokens=1200):
+def generate_stream_response_with_images(model, processor, formatted_prompt, images, user_input=None, max_new_tokens=1100):
     """Genera respuesta en streaming real usando TextIteratorStreamer para contenido multimodal"""
     logger.info(f"Iniciando generación multimodal con max_new_tokens={max_new_tokens}")
     
