@@ -132,13 +132,14 @@ def get_exam_report_prompt() -> str:
         "\n"
         "⚠️ EJEMPLO DE RESPUESTA CORRECTA ⚠️\n"
         "{\n"
-        '  "summary": "La radiografía de tórax muestra adecuada calidad técnica, con silueta cardíaca de tamaño normal y campos pulmonares claros.",\n'
+        '  "summary": "Se presenta estudio de Tomografía Computarizada (TC) de cráneo en corte sagital. La evaluación general revela una morfología cerebral conservada, con adecuada diferenciación entre la sustancia gris y blanca. No se identifican lesiones focales, hemorragias, ni signos de edema. El sistema ventricular es de tamaño normal, sin indicación de hidrocefalia. La fosa posterior muestra un cerebelo y tronco encefálico sin alteraciones aparentes. Las estructuras óseas visualizadas en el corte actual no muestran evidencia de fracturas o lesiones líticas/blásticas. Los tejidos blandos extracraneales no presentan anomalías significativas.",\n'
         '  "findings": [\n'
-        '    "Silueta cardíaca de tamaño normal",\n'
-        '    "Campos pulmonares sin evidencia de infiltrados",\n'
-        '    "No se observa derrame pleural",\n'
-        '    "Estructuras óseas sin alteraciones aparentes",\n'
-        '    "Diafragma en posición normal"\n'
+        '    "Cerebro: Estructura general del cerebro dentro de los límites normales. Presencia de surcos y cisuras corticales de apariencia usual para la edad del paciente",\n'
+        '    "Ventrículos: Sistema ventricular de tamaño y morfología conservados, sin evidencia de hidrocefalia",\n'
+        '    "Sustancia Blanca: Aparente integridad de la sustancia blanca, sin focos de señal anormal evidentes",\n'
+        '    "Fosa Posterior: El cerebelo y el tronco encefálico se visualizan sin alteraciones significativas",\n'
+        '    "Hueso: Las estructuras óseas del cráneo se observan intactas en el corte actual",\n'
+        '    "Tejidos Blandos: Tejidos blandos extracraneales sin particularidades notables"\n'
         '  ]\n'
         "}\n"
     )
