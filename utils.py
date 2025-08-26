@@ -129,6 +129,8 @@ def get_exam_report_prompt() -> str:
         "- Valida internamente que el JSON sea correcto antes de responder.\n"
         "- Si hay limitaciones diagnósticas, inclúyelas dentro del campo 'summary' o en un hallazgo dentro de 'findings'.\n"
         "- NO incluyas el campo 'disclaimer' - se agregará automáticamente.\n"
+        "- IMPORTANTE: Si usas comillas dentro de los textos, escápalas con \\ (ej: \"texto con \\\"comillas\\\" internas\").\n"
+        "- Asegúrate de que todos los strings estén correctamente cerrados con comillas dobles.\n"
         "\n"
         "⚠️ EJEMPLO DE RESPUESTA CORRECTA ⚠️\n"
         "{\n"
@@ -169,7 +171,35 @@ def clean_json_response(response: str) -> str:
     
     if start_idx != -1 and end_idx > start_idx:
         json_str = response_clean[start_idx:end_idx]
-        return json_str.strip()
+        
+        # Intentar arreglar problemas comunes de JSON
+        try:
+            # Primero intentar parsear como está
+            json.loads(json_str)
+            return json_str.strip()
+        except json.JSONDecodeError as e:
+            logger.warning(f"JSON inválido detectado, intentando arreglar: {str(e)}")
+            
+            # Intentar arreglar comillas no escapadas en strings
+            try:
+                # Buscar strings que contengan comillas dobles sin escapar
+                import re
+                
+                # Patrón para encontrar strings con comillas dobles sin escapar
+                pattern = r'"([^"]*)"([^"]*)"([^"]*)"'
+                
+                # Reemplazar comillas dobles internas con comillas simples
+                fixed_json = re.sub(r'(?<!\\)"(?=.*":\s*"[^"]*$)', "'", json_str)
+                
+                # Intentar parsear el JSON arreglado
+                json.loads(fixed_json)
+                logger.info("JSON arreglado exitosamente")
+                return fixed_json.strip()
+                
+            except (json.JSONDecodeError, Exception) as e2:
+                logger.error(f"No se pudo arreglar el JSON: {str(e2)}")
+                # Si no se puede arreglar, devolver el original para que el parser maneje el error
+                return json_str.strip()
     
     return response_clean.strip()
 
@@ -195,7 +225,11 @@ class ExamReportOutputParser:
             json_str = clean_json_response(response)
             
             if not json_str:
+                logger.warning("No se encontró JSON en la respuesta")
                 return self._create_fallback_response("No se encontró JSON válido en la respuesta")
+            
+            # Log para debugging
+            logger.info(f"JSON a parsear: {json_str[:500]}...")
             
             # Parsear JSON
             report_data = json.loads(json_str)
@@ -206,11 +240,44 @@ class ExamReportOutputParser:
             # Agregar disclaimer automáticamente
             validated_data['disclaimer'] = self.disclaimer
             
+            logger.info("JSON parseado exitosamente")
             return validated_data
             
         except json.JSONDecodeError as e:
             logger.error(f"Error parseando JSON: {str(e)}")
-            return self._create_fallback_response(f"Error en el formato JSON: {str(e)}")
+            logger.error(f"JSON problemático: {json_str[:200]}...")
+            
+            # Intentar extraer información útil del JSON malformado
+            try:
+                # Buscar patrones básicos en el JSON malformado
+                import re
+                
+                # Extraer summary si existe
+                summary_match = re.search(r'"summary":\s*"([^"]*)"', json_str)
+                summary = summary_match.group(1) if summary_match else "No se pudo extraer el resumen"
+                
+                # Extraer findings si existe
+                findings_match = re.search(r'"findings":\s*\[(.*?)\]', json_str, re.DOTALL)
+                if findings_match:
+                    findings_text = findings_match.group(1)
+                    # Limpiar y extraer elementos del array
+                    findings_items = re.findall(r'"([^"]*)"', findings_text)
+                    findings = findings_items if findings_items else ["No se pudieron extraer hallazgos específicos"]
+                else:
+                    findings = ["No se pudieron extraer hallazgos específicos"]
+                
+                logger.info("Se extrajo información parcial del JSON malformado")
+                
+                return {
+                    'summary': summary,
+                    'findings': findings,
+                    'disclaimer': self.disclaimer
+                }
+                
+            except Exception as extract_error:
+                logger.error(f"Error extrayendo información parcial: {str(extract_error)}")
+                return self._create_fallback_response(f"Error en el formato JSON: {str(e)}")
+                
         except Exception as e:
             logger.error(f"Error inesperado en el parser: {str(e)}")
             return self._create_fallback_response(f"Error inesperado: {str(e)}")
