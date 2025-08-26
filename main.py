@@ -712,18 +712,26 @@ async def generate_exam_report(
             early_stopping=False  # Permitir que la respuesta se complete naturalmente
         )
 
-        # Decodificar y limpiar respuesta
+        # Decodificar respuesta del modelo
         result = processor.batch_decode(outputs, skip_special_tokens=True)[0]
         print("--------------------------------")
         print(f"DEBUG: Resultado del modelo: {result}")
         print("--------------------------------")
-        result = clean_response(result, formatted_prompt)
+        
+        # Para reportes de examen, no usar clean_response ya que puede cortar el JSON
+        # Solo remover el prompt del inicio si está presente
+        if formatted_prompt in result:
+            result = result.replace(formatted_prompt, "").strip()
+        
         print("_________________________________")
-        print(f"DEBUG: Resultado limpio: {result}")
+        print(f"DEBUG: Resultado procesado: {result}")
         print("_________________________________")
         # Contar tokens (aproximado)
         tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
         
+        
+        # Usar OutputParser para procesar la respuesta
+        logger.info(f"Respuesta del modelo (longitud: {len(result)}): {result[:500]}...")
         
         # Verificar si la respuesta es muy larga
         if len(result) > 2000:
