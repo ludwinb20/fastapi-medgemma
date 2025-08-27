@@ -166,8 +166,8 @@ def get_diagnosis_prompt() -> str:
         '    {\n'
         '      "condicion": "Nombre de la condición médica",\n'
         '      "probabilidad": 85,\n'
-        '      "justificacion": "Breve justificación basada en los datos clínicos proporcionados",\n'
-        '      "recomendacion": "Recomendación clínica específica para el médico",\n'
+        '      "justificacion": "Justificación detallada y comprehensiva basada en los datos clínicos proporcionados, incluyendo correlación con síntomas, signos y hallazgos, considerando la fisiopatología y presentación clínica típica de la condición",\n'
+        '      "recomendacion": "Recomendación clínica extensa y específica para el médico, incluyendo estudios diagnósticos sugeridos, criterios de derivación, consideraciones terapéuticas iniciales, seguimiento recomendado y precauciones especiales",\n'
         '      "tipo": "obvio"\n'
         '    }\n'
         '  ],\n'
@@ -177,11 +177,11 @@ def get_diagnosis_prompt() -> str:
         "⚠️ REGLAS CRÍTICAS ⚠️\n"
         "- Responde SIEMPRE en español.\n"
         "- No inventes claves adicionales ni cambies los nombres existentes.\n"
-        "- El campo 'diagnosticos' debe ser un array de objetos con las claves: condicion, probabilidad, justificacion, recomendacion, tipo.\n"
+        "- El campo 'diagnosticos' debe ser un array de 4-5 objetos con las claves: condicion, probabilidad, justificacion, recomendacion, tipo.\n"
         "- La 'probabilidad' debe ser un número entero entre 1 y 100.\n"
         "- El 'tipo' debe ser 'obvio' para diagnósticos comunes o 'raro' para diagnósticos menos frecuentes.\n"
-        "- La 'justificacion' debe explicar brevemente por qué se considera ese diagnóstico.\n"
-        "- La 'recomendacion' debe ser específica para el médico, no para el paciente.\n"
+        "- La 'justificacion' debe ser extensa (mínimo 100-150 palabras) explicando detalladamente por qué se considera ese diagnóstico, incluyendo correlación con síntomas, signos y hallazgos, fisiopatología y presentación clínica.\n"
+        "- La 'recomendacion' debe ser extensa (mínimo 100-150 palabras) y específica para el médico, incluyendo estudios diagnósticos, criterios de derivación, consideraciones terapéuticas, seguimiento y precauciones.\n"
         "- NO incluyas el campo 'disclaimer' - se agregará automáticamente.\n"
         "- IMPORTANTE: Si usas comillas dentro de los textos, escápalas con \\ (ej: \"texto con \\\"comillas\\\" internas\").\n"
         "- Asegúrate de que todos los strings estén correctamente cerrados con comillas dobles.\n"
@@ -200,15 +200,36 @@ def get_diagnosis_prompt() -> str:
         '    {\n'
         '      "condicion": "Neumonía bacteriana",\n'
         '      "probabilidad": 75,\n'
-        '      "justificacion": "La combinación de fiebre, tos y leucocitosis sugiere infección respiratoria bacteriana",\n'
-        '      "recomendacion": "Considerar radiografía de tórax, hemocultivos y antibióticos empíricos según guías locales",\n'
+        '      "justificacion": "La combinación de fiebre alta, tos productiva, leucocitosis y PCR elevada es altamente sugestiva de neumonía bacteriana. La fiebre indica respuesta inflamatoria sistémica, la tos productiva sugiere infección del parénquima pulmonar, y los hallazgos de laboratorio (leucocitosis con desviación izquierda y PCR elevada) confirman la presencia de un proceso infeccioso bacteriano activo. La presentación clínica es consistente con la fisiopatología típica de neumonía adquirida en la comunidad, donde los patógenos más frecuentes incluyen Streptococcus pneumoniae, Haemophilus influenzae y Mycoplasma pneumoniae.",\n'
+        '      "recomendacion": "Solicitar radiografía de tórax posteroanterior y lateral para confirmar el diagnóstico y evaluar la extensión del compromiso pulmonar. Realizar hemocultivos antes de iniciar antibióticos para identificar el patógeno causal. Iniciar antibióticos empíricos según guías locales (amoxicilina-clavulánico o macrólidos). Considerar hospitalización si hay criterios de gravedad (edad >65 años, comorbilidades, hipoxemia, inestabilidad hemodinámica). Programar seguimiento en 48-72 horas para evaluar respuesta al tratamiento y ajustar terapia según cultivos y evolución clínica.",\n'
         '      "tipo": "obvio"\n'
         '    },\n'
         '    {\n'
         '      "condicion": "Influenza",\n'
-        '      "probabilidad": 60,\n'
-        '      "justificacion": "Fiebre y tos son síntomas cardinales de influenza, especialmente en temporada",\n'
-        '      "recomendacion": "Realizar test rápido de influenza, considerar antivirales si se confirma y está en ventana terapéutica",\n'
+        '      "probabilidad": 65,\n'
+        '      "justificacion": "La presentación de fiebre de inicio súbito, tos seca y síntomas sistémicos (dolor de cabeza, mialgias) es característica de influenza, especialmente durante la temporada de gripe. La fiebre alta de aparición brusca es un signo cardinal de influenza, diferenciándola de otras infecciones respiratorias virales. La tos seca y la ausencia de síntomas de vías respiratorias superiores prominentes son típicos de la presentación clínica de influenza. Los síntomas sistémicos como dolor de cabeza y mialgias reflejan la respuesta inflamatoria sistémica característica de esta infección viral.",\n'
+        '      "recomendacion": "Realizar test rápido de influenza A/B para confirmar el diagnóstico, especialmente si está en ventana terapéutica (primeras 48 horas). Considerar tratamiento con oseltamivir o zanamivir si se confirma influenza y el paciente presenta factores de riesgo para complicaciones. Implementar medidas de aislamiento respiratorio para prevenir transmisión. Recomendar reposo, hidratación adecuada y antipiréticos. Programar seguimiento en 24-48 horas para evaluar evolución y detectar complicaciones tempranas como neumonía viral o bacteriana secundaria.",\n'
+        '      "tipo": "obvio"\n'
+        '    },\n'
+        '    {\n'
+        '      "condicion": "Bronquitis aguda",\n'
+        '      "probabilidad": 55,\n'
+        '      "justificacion": "La tos como síntoma principal, especialmente si es productiva, junto con fiebre leve y ausencia de hallazgos de consolidación pulmonar, sugiere bronquitis aguda. La tos es el síntoma más prominente y puede persistir por 2-3 semanas. La fiebre suele ser de baja intensidad y autolimitada. La ausencia de signos de consolidación pulmonar (como matidez a la percusión o crepitantes localizados) ayuda a diferenciar de neumonía. La bronquitis aguda es típicamente de etiología viral, aunque puede complicarse con sobreinfección bacteriana.",\n'
+        '      "recomendacion": "Confirmar ausencia de consolidación pulmonar mediante auscultación cuidadosa. La radiografía de tórax no está indicada rutinariamente en bronquitis aguda sin factores de riesgo. Tratamiento sintomático con antitúsicos si la tos es seca y molesta, o mucolíticos si es productiva. Evitar uso innecesario de antibióticos ya que la mayoría de casos son virales. Educar al paciente sobre la evolución natural de la enfermedad (2-3 semanas) y signos de alarma que requieren reevaluación. Considerar espirometría si hay sospecha de asma o EPOC subyacente.",\n'
+        '      "tipo": "obvio"\n'
+        '    },\n'
+        '    {\n'
+        '      "condicion": "COVID-19",\n'
+        '      "probabilidad": 45,\n'
+        '      "justificacion": "La presentación de fiebre, tos y síntomas sistémicos como dolor de cabeza es compatible con COVID-19, especialmente en contexto de circulación viral activa. La fiebre es un síntoma frecuente en COVID-19, aunque puede estar ausente en algunos casos. La tos seca es característica de esta infección viral. Los síntomas sistémicos como dolor de cabeza y fatiga son comunes en COVID-19. La presentación clínica puede ser similar a influenza, por lo que es importante considerar el contexto epidemiológico y realizar pruebas específicas para diferenciar.",\n'
+        '      "recomendacion": "Realizar test de antígenos o PCR para SARS-CoV-2 para confirmar el diagnóstico. Implementar medidas de aislamiento respiratorio estricto hasta confirmar o descartar COVID-19. Evaluar factores de riesgo para enfermedad grave (edad avanzada, comorbilidades, inmunosupresión). Considerar tratamiento con antivirales específicos (nirmatrelvir/ritonavir, remdesivir) en pacientes de alto riesgo. Monitorear saturación de oxígeno y signos de alarma. Programar seguimiento cercano para detectar deterioro respiratorio temprano.",\n'
+        '      "tipo": "obvio"\n'
+        '    },\n'
+        '    {\n'
+        '      "condicion": "Sinusitis aguda",\n'
+        '      "probabilidad": 35,\n'
+        '      "justificacion": "La combinación de fiebre, dolor de cabeza y síntomas respiratorios puede indicar sinusitis aguda, especialmente si hay síntomas de vías respiratorias superiores asociados. El dolor de cabeza puede ser referido desde los senos paranasales inflamados. La fiebre indica proceso infeccioso activo. La sinusitis aguda puede presentarse con síntomas sistémicos similares a otras infecciones respiratorias. Es importante evaluar la presencia de síntomas específicos de sinusitis como dolor facial, congestión nasal y secreción purulenta.",\n'
+        '      "recomendacion": "Realizar examen físico completo de cabeza y cuello, incluyendo palpación de senos paranasales y rinoscopia anterior. Considerar radiografía de senos paranasales solo si el diagnóstico es incierto. Tratamiento inicial con descongestionantes nasales y analgésicos. Considerar antibióticos solo si hay síntomas persistentes por más de 10 días o empeoramiento después de 5-7 días. Educar sobre técnicas de irrigación nasal y medidas de higiene. Programar seguimiento en 7-10 días para evaluar respuesta al tratamiento.",\n'
         '      "tipo": "obvio"\n'
         '    }\n'
         '  ]\n'
