@@ -114,14 +114,14 @@ def get_exam_report_prompt() -> str:
         "Responde ÚNICAMENTE con un JSON válido y parseable. NO incluyas texto adicional, explicaciones, comentarios ni bloques de código.\n"
         "El JSON debe contener exclusivamente los siguientes 2 campos:\n"
         "{\n"
-        '  "summary": "Texto técnico y profesional en español que describa de forma completa el examen",\n'
+        '  "summary": "Análisis técnico detallado y comprehensivo del examen en español, incluyendo descripción de la técnica, calidad de la imagen, evaluación sistemática de todas las estructuras anatómicas relevantes, hallazgos normales y anormales, limitaciones técnicas, correlación clínica cuando sea apropiada, y recomendaciones para estudios adicionales si son necesarios. El resumen debe ser extenso (mínimo 300-500 palabras) y cubrir todos los aspectos relevantes del estudio.",\n'
         '  "findings": ["Hallazgo 1 en español", "Hallazgo 2 en español", "Hallazgo 3 en español"]\n'
         "}\n"
         "\n"
         "⚠️ REGLAS CRÍTICAS ⚠️\n"
         "- Responde SIEMPRE en español.\n"
         "- No inventes claves adicionales ni cambies los nombres existentes.\n"
-        "- El campo 'summary' debe ser un string con análisis completo del examen.\n"
+        "- El campo 'summary' debe ser un string extenso (mínimo 300-500 palabras) con análisis completo y detallado del examen, incluyendo técnica, calidad, evaluación sistemática, hallazgos, limitaciones y recomendaciones.\n"
         "- El campo 'findings' debe ser un array de strings, cada hallazgo como un string independiente.\n"
         "- No uses valores null, listas anidadas ni otros tipos de datos.\n"
         "- No uses bloques de código markdown (```json o ```).\n"
@@ -134,7 +134,7 @@ def get_exam_report_prompt() -> str:
         "\n"
         "⚠️ EJEMPLO DE RESPUESTA CORRECTA ⚠️\n"
         "{\n"
-        '  "summary": "Se presenta estudio de Tomografía Computarizada (TC) de cráneo en corte sagital. La evaluación general revela una morfología cerebral conservada, con adecuada diferenciación entre la sustancia gris y blanca. No se identifican lesiones focales, hemorragias, ni signos de edema. El sistema ventricular es de tamaño normal, sin indicación de hidrocefalia. La fosa posterior muestra un cerebelo y tronco encefálico sin alteraciones aparentes. Las estructuras óseas visualizadas en el corte actual no muestran evidencia de fracturas o lesiones líticas/blásticas. Los tejidos blandos extracraneales no presentan anomalías significativas.",\n'
+        '  "summary": "Se presenta estudio de Tomografía Computarizada (TC) de cráneo en corte sagital, realizado con técnica helicoidal y reconstrucción multiplanar. La calidad técnica de la imagen es adecuada, con buena resolución espacial y contraste tisular apropiado para la evaluación de estructuras intracraneales. La evaluación general revela una morfología cerebral conservada, con adecuada diferenciación entre la sustancia gris y blanca, sin evidencia de cambios atróficos significativos para la edad del paciente. No se identifican lesiones focales, hemorragias intracraneales, ni signos de edema cerebral o efecto de masa. El sistema ventricular es de tamaño normal, con configuración anatómica conservada, sin indicación de hidrocefalia comunicante o no comunicante. Los ventrículos laterales, tercer ventrículo y acueducto de Silvio se visualizan con calibres normales. La fosa posterior muestra un cerebelo de tamaño y morfología normales, con hemisferios cerebelosos simétricos y vermis bien definido. El tronco encefálico se observa sin alteraciones aparentes, con mesencéfalo, protuberancia y bulbo raquídeo de configuración anatómica normal. Las estructuras óseas del cráneo visualizadas en el corte actual no muestran evidencia de fracturas, lesiones líticas o blásticas, ni cambios en la densidad mineral ósea. Los tejidos blandos extracraneales no presentan anomalías significativas, sin evidencia de masas, colecciones o cambios inflamatorios. La evaluación de los senos paranasales en el corte actual no revela opacidades o niveles hidroaéreos patológicos. Se recomienda correlación clínica para interpretación completa de los hallazgos y consideración de estudios adicionales si existe sospecha clínica de patología específica.",\n'
         '  "findings": [\n'
         '    "Cerebro: Estructura general del cerebro dentro de los límites normales. Presencia de surcos y cisuras corticales de apariencia usual para la edad del paciente",\n'
         '    "Ventrículos: Sistema ventricular de tamaño y morfología conservados, sin evidencia de hidrocefalia",\n'
