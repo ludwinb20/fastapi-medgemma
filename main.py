@@ -11,7 +11,7 @@ from io import BytesIO
 import json
 import firebase_admin
 from firebase_admin import auth, credentials
-from utils import get_system_prompt, get_medical_image_prompt, get_exam_report_prompt, clean_response, clean_json_response, ExamReportOutputParser, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
+from utils import get_system_prompt, get_medical_image_prompt, get_exam_report_prompt, get_diagnosis_prompt, clean_response, clean_json_response, ExamReportOutputParser, DiagnosisOutputParser, generate_stream_response, generate_stream_response_with_images, process_context_messages, process_context_messages_with_images
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -71,6 +71,18 @@ class ImageProcessRequest(BaseModel):
 class ExamReportRequest(BaseModel):
     imageDataUri: str
     examType: str
+
+class DiagnosisRequest(BaseModel):
+    sintomas: str
+    signos: Optional[str] = None
+    hallazgos: Optional[str] = None
+    modo: str  # "obvios" o "raros"
+
+class DiagnosisResponse(BaseModel):
+    diagnosticos: list
+    disclaimer: str
+    tokens_used: int
+    success: bool
 
 
 class ProcessResponse(BaseModel):
@@ -758,6 +770,114 @@ async def generate_exam_report(
         raise
     except Exception as e:
         logger.error(f"Error generando reporte de examen: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+@app.post("/api/diagnosis", response_model=ProcessResponse)
+async def generate_diagnosis(
+    request: DiagnosisRequest,
+    user_claims: dict = Depends(verify_api_key)
+):
+    """Genera diagnósticos diferenciales basados en síntomas, signos y hallazgos"""
+    try:
+        logger.info(f"Generando diagnóstico diferencial para usuario: {user_claims.get('uid', 'unknown')}")
+        
+        # Validar el modo
+        if request.modo not in ['obvios', 'raros']:
+            raise HTTPException(status_code=400, detail="El modo debe ser 'obvios' o 'raros'")
+        
+        # Construir el prompt específico para el diagnóstico
+        diagnosis_prompt = f"Analiza los siguientes datos clínicos y genera diagnósticos diferenciales:\n- Síntomas: {request.sintomas}\n- Signos: {request.signos or 'No especificados'}\n- Hallazgos: {request.hallazgos or 'No especificados'}\n- Modo: {request.modo}"
+        
+        # Construir mensajes con el prompt del sistema para diagnósticos
+        messages = [
+            {
+                "role": "system",
+                "content": [
+                    {"type": "text", "text": get_diagnosis_prompt()}
+                ]
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": diagnosis_prompt}
+                ]
+            }
+        ]
+
+        # Aplicar template de chat
+        formatted_prompt = processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+
+        # Procesar con el modelo
+        inputs = processor(
+            text=formatted_prompt,
+            return_tensors="pt"
+        ).to("cuda")
+
+        # Generar respuesta con parámetros optimizados para diagnósticos detallados
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=2048,  # Aumentado para diagnósticos más detallados
+            do_sample=True,       # Habilitar muestreo para mayor diversidad
+            temperature=0.7,      # Temperatura moderada para balance entre creatividad y coherencia
+            top_p=0.9,           # Nucleus sampling para mejor calidad
+            repetition_penalty=1.1,  # Penalizar repeticiones
+            length_penalty=1.0,   # No penalizar respuestas largas
+            early_stopping=False  # Permitir que la respuesta se complete naturalmente
+        )
+
+        # Decodificar respuesta del modelo
+        result = processor.batch_decode(outputs, skip_special_tokens=True)[0]
+        print("--------------------------------")
+        print(f"DEBUG: Resultado del modelo: {result}")
+        print("--------------------------------")
+        
+        # Para diagnósticos, no usar clean_response ya que puede cortar el JSON
+        # Solo remover el prompt del inicio si está presente
+        if formatted_prompt in result:
+            result = result.replace(formatted_prompt, "").strip()
+        
+        print("_________________________________")
+        print(f"DEBUG: Resultado procesado: {result}")
+        print("_________________________________")
+        
+        # Contar tokens (aproximado)
+        tokens_used = len(inputs.input_ids[0]) + len(outputs[0]) - len(inputs.input_ids[0])
+        
+        # Usar OutputParser para procesar la respuesta
+        logger.info(f"Respuesta del modelo (longitud: {len(result)}): {result[:500]}...")
+        
+        # Verificar si la respuesta es muy larga
+        if len(result) > 2000:
+            logger.warning(f"Respuesta muy larga ({len(result)} chars), puede estar truncada")
+        
+        parser = DiagnosisOutputParser()
+        parsed_diagnosis = parser.parse(result)
+        
+        # Formatear para la API
+        formatted_response = parser.format_for_api(parsed_diagnosis)
+        
+        # Determinar si fue exitoso basado en si se pudo extraer información válida
+        success = len(parsed_diagnosis.get('diagnosticos', [])) > 0 and all(
+            diagnostico.get('condicion') and diagnostico.get('condicion') != 'Diagnóstico diferencial no disponible'
+            for diagnostico in parsed_diagnosis.get('diagnosticos', [])
+        )
+        
+        logger.info(f"Diagnóstico diferencial procesado. Tokens usados: {tokens_used}, Éxito: {success}")
+        
+        return ProcessResponse(
+            response=formatted_response,
+            tokens_used=tokens_used,
+            success=success
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generando diagnóstico diferencial: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 

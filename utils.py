@@ -146,6 +146,75 @@ def get_exam_report_prompt() -> str:
         "}\n"
     )
 
+def get_diagnosis_prompt() -> str:
+    return (
+        "Eres LucasMed, un asistente médico de IA especializado en diagnóstico diferencial que ayuda a DOCTORES a explorar diagnósticos.\n"
+        "\n"
+        "⚠️ REGLA PRINCIPAL, ABSOLUTA Y PRIORITARIA ⚠️\n"
+        "SOLO puedes analizar información médica y generar diagnósticos diferenciales. "
+        "Si la información NO es médica o no puede interpretarse, debes responder ÚNICAMENTE con la frase fija: "
+        "'La información proporcionada no corresponde a datos médicos válidos o no puede ser interpretada adecuadamente.'\n"
+        "No intentes dar contexto adicional, explicaciones ni disculpas. "
+        "No reformules esta frase. No inventes otra variante. "
+        "Esta regla es PRIORITARIA sobre cualquier otra.\n"
+        "\n"
+        "⚠️ FORMATO DE RESPUESTA OBLIGATORIO ⚠️\n"
+        "Responde ÚNICAMENTE con un JSON válido y parseable. NO incluyas texto adicional, explicaciones, comentarios ni bloques de código.\n"
+        "El JSON debe contener exclusivamente los siguientes 2 campos:\n"
+        "{\n"
+        '  "diagnosticos": [\n'
+        '    {\n'
+        '      "condicion": "Nombre de la condición médica",\n'
+        '      "probabilidad": 85,\n'
+        '      "justificacion": "Breve justificación basada en los datos clínicos proporcionados",\n'
+        '      "recomendacion": "Recomendación clínica específica para el médico",\n'
+        '      "tipo": "obvio"\n'
+        '    }\n'
+        '  ],\n'
+        '  "disclaimer": "Importante: Esta es una sugerencia generada por IA y no reemplaza el juicio clínico profesional. El diagnóstico definitivo y el tratamiento deben ser realizados por un médico."\n'
+        "}\n"
+        "\n"
+        "⚠️ REGLAS CRÍTICAS ⚠️\n"
+        "- Responde SIEMPRE en español.\n"
+        "- No inventes claves adicionales ni cambies los nombres existentes.\n"
+        "- El campo 'diagnosticos' debe ser un array de objetos con las claves: condicion, probabilidad, justificacion, recomendacion, tipo.\n"
+        "- La 'probabilidad' debe ser un número entero entre 1 y 100.\n"
+        "- El 'tipo' debe ser 'obvio' para diagnósticos comunes o 'raro' para diagnósticos menos frecuentes.\n"
+        "- La 'justificacion' debe explicar brevemente por qué se considera ese diagnóstico.\n"
+        "- La 'recomendacion' debe ser específica para el médico, no para el paciente.\n"
+        "- NO incluyas el campo 'disclaimer' - se agregará automáticamente.\n"
+        "- IMPORTANTE: Si usas comillas dentro de los textos, escápalas con \\ (ej: \"texto con \\\"comillas\\\" internas\").\n"
+        "- Asegúrate de que todos los strings estén correctamente cerrados con comillas dobles.\n"
+        "- No uses valores null, listas anidadas ni otros tipos de datos.\n"
+        "- No uses bloques de código markdown (```json o ```).\n"
+        "- No agregues explicaciones ni texto fuera del JSON.\n"
+        "- Valida internamente que el JSON sea correcto antes de responder.\n"
+        "- Si el modo es 'obvios', prioriza diagnósticos comunes y frecuentes.\n"
+        "- Si el modo es 'raros', prioriza diagnósticos menos frecuentes o atípicos.\n"
+        "- No repitas diagnósticos similares en la misma lista.\n"
+        "- No pidas datos personales ni hables al paciente, solo al médico.\n"
+        "\n"
+        "⚠️ EJEMPLO DE RESPUESTA CORRECTA ⚠️\n"
+        "{\n"
+        '  "diagnosticos": [\n'
+        '    {\n'
+        '      "condicion": "Neumonía bacteriana",\n'
+        '      "probabilidad": 75,\n'
+        '      "justificacion": "La combinación de fiebre, tos y leucocitosis sugiere infección respiratoria bacteriana",\n'
+        '      "recomendacion": "Considerar radiografía de tórax, hemocultivos y antibióticos empíricos según guías locales",\n'
+        '      "tipo": "obvio"\n'
+        '    },\n'
+        '    {\n'
+        '      "condicion": "Influenza",\n'
+        '      "probabilidad": 60,\n'
+        '      "justificacion": "Fiebre y tos son síntomas cardinales de influenza, especialmente en temporada",\n'
+        '      "recomendacion": "Realizar test rápido de influenza, considerar antivirales si se confirma y está en ventana terapéutica",\n'
+        '      "tipo": "obvio"\n'
+        '    }\n'
+        '  ]\n'
+        "}\n"
+    )
+
 def clean_json_response(response: str) -> str:
     """Limpia una respuesta para extraer JSON válido, manejando diferentes formatos"""
     if not response:
@@ -371,6 +440,198 @@ class ExamReportOutputParser:
         return {
             'summary': f"Error en el procesamiento: {error_message}",
             'findings': "Se requiere revisión manual por un radiólogo certificado.",
+            'disclaimer': self.disclaimer
+        }
+    
+    def format_for_api(self, parsed_data: dict) -> str:
+        """Formatea los datos parseados para la respuesta de la API"""
+        return json.dumps(parsed_data, ensure_ascii=False)
+
+class DiagnosisOutputParser:
+    """Parser para extraer y validar diagnósticos diferenciales del modelo"""
+    
+    def __init__(self):
+        self.required_keys = ['diagnosticos']
+        self.disclaimer = "Importante: Esta es una sugerencia generada por IA y no reemplaza el juicio clínico profesional. El diagnóstico definitivo y el tratamiento deben ser realizados por un médico."
+    
+    def parse(self, response: str) -> dict:
+        """
+        Parsea la respuesta del modelo y extrae los diagnósticos diferenciales
+        
+        Args:
+            response: Respuesta del modelo
+            
+        Returns:
+            dict: Diagnósticos parseados con las claves requeridas + disclaimer
+        """
+        try:
+            # Limpiar la respuesta
+            json_str = clean_json_response(response)
+            
+            if not json_str:
+                logger.warning("No se encontró JSON en la respuesta")
+                return self._create_fallback_response("No se encontró JSON válido en la respuesta")
+            
+            # Log para debugging
+            logger.info(f"JSON a parsear (longitud: {len(json_str)}): {json_str}")
+            
+            # Parsear JSON
+            diagnosis_data = json.loads(json_str)
+            
+            # Validar y completar claves requeridas
+            validated_data = self._validate_and_complete(diagnosis_data)
+            
+            # Agregar disclaimer automáticamente
+            validated_data['disclaimer'] = self.disclaimer
+            
+            logger.info("JSON parseado exitosamente")
+            return validated_data
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parseando JSON: {str(e)}")
+            logger.error(f"JSON problemático: {json_str[:200]}...")
+            
+            # Intentar extraer información útil del JSON malformado
+            try:
+                # Buscar patrones básicos en el JSON malformado
+                import re
+                
+                # Buscar el último JSON en la respuesta completa
+                all_jsons = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response)
+                if all_jsons:
+                    # Tomar el último JSON encontrado
+                    last_json = all_jsons[-1]
+                    logger.info(f"Extrayendo del último JSON encontrado: {last_json[:200]}...")
+                    json_str = last_json
+                
+                # Extraer diagnósticos si existe
+                diagnosticos_match = re.search(r'"diagnosticos":\s*\[(.*?)\]', json_str, re.DOTALL)
+                if diagnosticos_match:
+                    diagnosticos_text = diagnosticos_match.group(1)
+                    # Extraer objetos de diagnóstico individuales
+                    diagnosticos = self._extract_diagnosticos(diagnosticos_text)
+                else:
+                    diagnosticos = [self._create_default_diagnostico()]
+                
+                logger.info(f"Se extrajo información parcial: {len(diagnosticos)} diagnósticos")
+                
+                return {
+                    'diagnosticos': diagnosticos,
+                    'disclaimer': self.disclaimer
+                }
+                
+            except Exception as extract_error:
+                logger.error(f"Error extrayendo información parcial: {str(extract_error)}")
+                return self._create_fallback_response(f"Error en el formato JSON: {str(e)}")
+                
+        except Exception as e:
+            logger.error(f"Error inesperado en el parser: {str(e)}")
+            return self._create_fallback_response(f"Error inesperado: {str(e)}")
+    
+    def _validate_and_complete(self, data: dict) -> dict:
+        """Valida y completa las claves requeridas en el diagnóstico"""
+        validated = {}
+        
+        # Validar diagnósticos
+        if 'diagnosticos' in data and isinstance(data['diagnosticos'], list):
+            validated_diagnosticos = []
+            for diagnostico in data['diagnosticos']:
+                if isinstance(diagnostico, dict):
+                    validated_diagnostico = self._validate_diagnostico(diagnostico)
+                    validated_diagnosticos.append(validated_diagnostico)
+            
+            if validated_diagnosticos:
+                validated['diagnosticos'] = validated_diagnosticos
+            else:
+                validated['diagnosticos'] = [self._create_default_diagnostico()]
+        else:
+            validated['diagnosticos'] = [self._create_default_diagnostico()]
+        
+        return validated
+    
+    def _validate_diagnostico(self, diagnostico: dict) -> dict:
+        """Valida un diagnóstico individual"""
+        validated = {}
+        
+        # Validar condición
+        if 'condicion' in diagnostico and diagnostico['condicion']:
+            validated['condicion'] = str(diagnostico['condicion']).strip()
+        else:
+            validated['condicion'] = "Diagnóstico no especificado"
+        
+        # Validar probabilidad
+        if 'probabilidad' in diagnostico:
+            try:
+                prob = int(diagnostico['probabilidad'])
+                validated['probabilidad'] = max(1, min(100, prob))  # Asegurar rango 1-100
+            except (ValueError, TypeError):
+                validated['probabilidad'] = 50
+        else:
+            validated['probabilidad'] = 50
+        
+        # Validar justificación
+        if 'justificacion' in diagnostico and diagnostico['justificacion']:
+            validated['justificacion'] = str(diagnostico['justificacion']).strip()
+        else:
+            validated['justificacion'] = "Justificación no disponible"
+        
+        # Validar recomendación
+        if 'recomendacion' in diagnostico and diagnostico['recomendacion']:
+            validated['recomendacion'] = str(diagnostico['recomendacion']).strip()
+        else:
+            validated['recomendacion'] = "Recomendación no disponible"
+        
+        # Validar tipo
+        if 'tipo' in diagnostico and diagnostico['tipo'] in ['obvio', 'raro']:
+            validated['tipo'] = diagnostico['tipo']
+        else:
+            validated['tipo'] = 'obvio'
+        
+        return validated
+    
+    def _extract_diagnosticos(self, diagnosticos_text: str) -> list:
+        """Extrae diagnósticos de texto JSON malformado"""
+        import re
+        
+        # Buscar objetos de diagnóstico individuales
+        diagnostico_pattern = r'\{[^{}]*"condicion"[^{}]*\}'
+        matches = re.findall(diagnostico_pattern, diagnosticos_text)
+        
+        diagnosticos = []
+        for match in matches:
+            try:
+                # Intentar parsear cada diagnóstico individual
+                diagnostico_data = json.loads(match)
+                validated_diagnostico = self._validate_diagnostico(diagnostico_data)
+                diagnosticos.append(validated_diagnostico)
+            except:
+                continue
+        
+        if not diagnosticos:
+            diagnosticos = [self._create_default_diagnostico()]
+        
+        return diagnosticos
+    
+    def _create_default_diagnostico(self) -> dict:
+        """Crea un diagnóstico por defecto"""
+        return {
+            'condicion': 'Diagnóstico diferencial no disponible',
+            'probabilidad': 50,
+            'justificacion': 'No se pudo generar un análisis diferencial con la información proporcionada',
+            'recomendacion': 'Se requiere evaluación clínica completa por un médico',
+            'tipo': 'obvio'
+        }
+    
+    def _create_fallback_response(self, error_message: str) -> dict:
+        """Crea una respuesta de fallback cuando hay errores"""
+        return {
+            'diagnosticos': [{
+                'condicion': f'Error en el procesamiento: {error_message}',
+                'probabilidad': 0,
+                'justificacion': 'No se pudo procesar la información médica proporcionada',
+                'recomendacion': 'Se requiere evaluación clínica directa por un médico',
+                'tipo': 'obvio'
+            }],
             'disclaimer': self.disclaimer
         }
     
